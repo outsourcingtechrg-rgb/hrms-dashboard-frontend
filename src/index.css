@@ -1,0 +1,54 @@
+@import "tailwindcss";
+/* @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap'); */
+.rig-red {
+  color: #990400;
+}
+
+.page-bg {
+  background-image: linear-gradient(to right, rgba(253, 219, 219, 0.95), rgba(207, 96, 63, 0.37));
+}
+.NavButtonColors {
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0.6rem 1.2rem;
+
+  border-radius: 1rem;
+  border: none;
+  cursor: pointer;
+
+  background: linear-gradient(135deg, #990400, #b10a05);
+  color: #ffffff;
+
+  box-shadow: 
+    0 4px 10px rgba(153, 4, 0, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.1);
+
+  transition:
+    background 0.3s ease,
+    box-shadow 0.3s ease,
+    transform 0.15s ease;
+}
+
+/* Hover */
+.NavButtonColors:hover {
+  background: linear-gradient(135deg, #922504, #a61a06);
+  box-shadow:
+    0 6px 16px rgba(153, 4, 0, 0.35),
+    0 3px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+/* Active (click) */
+.NavButtonColors:active {
+  transform: translateY(0);
+  box-shadow:
+    0 3px 8px rgba(153, 4, 0, 0.25);
+}
+
+/* Focus (keyboard accessibility) */
+.NavButtonColors:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(153, 4, 0, 0.35),
+    0 4px 10px rgba(153, 4, 0, 0.25);
+}
