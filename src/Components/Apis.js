@@ -54,12 +54,15 @@ export  const API = {
   MyAttendanceToday   : (empId) => `${mainOrigin}/attendance/me/today?employee_id=${empId}`,
   MyAttendanceSummary : (empId, month) => `${mainOrigin}/attendance/me/summary?employee_id=${empId}&month=${month}`,
 
+  // Attendance
+  AllAttendance: `${mainOrigin}/attendance`,
+  AttendanceByEmployee: (empId, month) =>`${mainOrigin}/attendance/employee/${empId}/date/${month ? `?month=${month}` : ""}`,
+  // AttendanceSummaryAdmin: `${mainOrigin}/attendance/summary`,
+
   // Notices
   notices: `${mainOrigin}/notices`,
   noticeDetails: (id) => `${mainOrigin}/notices/${id}`,
-};
 
-//  *  GET /attendance/me          ?employee_id=&month=YYYY-MM  → AttendanceRecord[]
-//  *  GET /attendance/me/today    ?employee_id=                → AttendanceRecord | null
-//  *  GET /attendance/me/summary  ?employee_id=&month=YYYY-MM  → AttendanceSummary
-//  *
+  AttendanceSummaryAdmin : (empId, month) => `${mainOrigin}/attendance/summary?employee_id=${empId}&month=${month}`,
+
+};

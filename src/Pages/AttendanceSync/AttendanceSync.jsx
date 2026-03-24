@@ -489,12 +489,12 @@ export default function AttendanceSyncPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting,     setDeleting]     = useState(false);
   const [toggling,     setToggling]     = useState(null); // device id being toggled
-
   const [toast, setToast] = useState(null);
   const showToast = useCallback((msg, type = "info") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3200);
   }, []);
+  
 
   /* ── fetch all ── */
   const fetchDevices = useCallback(async () => {

@@ -47,10 +47,11 @@ function decodeJWT(token) {
 //   2: CeoDashboard,
 //   3: HrAdminDashboard,
 //   4: HrDashboard,
-//   5: DepartmentHeadDashboard,
-//   6: LeadDashboard,
-//   7: EmployeeDashboard,
-//   8: InternDashboard,
+//   5: FinanceDashboard,
+//   6: DepartmentHeadDashboard,
+//   7: LeadDashboard,
+//   8: EmployeeDashboard,
+//   9: InternDashboard,
 // };
 
 //  for testing propose only
@@ -63,6 +64,7 @@ const roleDashboardMap = {
   6: LeadDashboard,
   7: LeadDashboard,
   8: InternDashboard,
+  9: InternDashboard,
 };
 const MY_SECTION = [
   { label: "My Attendance", icon: Clock, path: "/my-attendance", my: true },
@@ -136,8 +138,15 @@ const roleSidebarMap = {
         // my section
       ...MY_SECTION
   ],
-  // Department head
+  // finance head
   5: [
+      { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false }, 
+      { label: "Finance", icon: LayoutDashboard, path: "/finance", my: false }, 
+        // my section
+      ...MY_SECTION
+  ],
+  // Department head
+  6: [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
@@ -152,19 +161,19 @@ const roleSidebarMap = {
       ...MY_SECTION
   ],
   // Lead
-  6: [
+  7: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
         // my section
       ...MY_SECTION
   ],
   // Employee
-  7: [
+  8: [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
         // my section
       ...MY_SECTION
   ],
   // intern
-  8: [
+  9: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false }, 
         // my section
       ...MY_SECTION

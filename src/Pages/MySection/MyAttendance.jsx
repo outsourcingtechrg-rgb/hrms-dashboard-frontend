@@ -163,6 +163,7 @@ function isOvernightShift(shift) {
 const STATUS_CFG = {
   Present: { badge: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500", cal: "bg-emerald-400 text-white" },
   Late:    { badge: "bg-yellow-100 text-yellow-800",   dot: "bg-yellow-400",  cal: "bg-yellow-400 text-white"  },
+  Early:    { badge: "bg-yellow-100 text-yellow-800",   dot: "bg-yellow-400",  cal: "bg-yellow-400 text-white"  },
   Absent:  { badge: "bg-red-100 text-red-700",         dot: "bg-red-500",     cal: "bg-red-400 text-white"     },
   Leave:   { badge: "bg-slate-100 text-slate-600",     dot: "bg-slate-400",   cal: "bg-slate-400 text-white"   },
 };
