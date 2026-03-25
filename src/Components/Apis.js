@@ -37,6 +37,16 @@ export  const API = {
   UpdateShifts: (id) => `${mainOrigin}/shifts/${id}`, //linked
   shiftDetailsById: (id) => `${mainOrigin}/shifts/employee/${id}`,
   
+  // applications
+GetAllApplications:  `${mainOrigin}/applications`,
+ApplicationStats:    `${mainOrigin}/applications/stats`,
+ApplicationById:     (id) => `${mainOrigin}/applications/${id}`,
+CreateApplication:   `${mainOrigin}/applications`,
+HODAction:           (id) => `${mainOrigin}/applications/${id}/hod`,
+HRAction:            (id) => `${mainOrigin}/applications/${id}/hr`,
+UpdateApplication:   (id) => `${mainOrigin}/applications/${id}`,
+DeleteApplication:   (id) => `${mainOrigin}/applications/${id}`,
+
   // Attendance Sync
   ListAttendnaceSync: `${mainOrigin}/attendance/sync/`, //linked
   CreateAttendanceSync: `${mainOrigin}/attendance/sync/`, //linked
