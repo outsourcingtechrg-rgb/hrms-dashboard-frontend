@@ -142,13 +142,12 @@ const roleSidebarMap = {
   5: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false }, 
       { label: "Finance", icon: LayoutDashboard, path: "/finance", my: false }, 
-      { label: "Applications", icon: Ticket, path: "/applications", my: true },
-      // my section
+        // my section
       ...MY_SECTION
-    ],
-    // Department head
-    6: [
-      { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
+  ],
+  // Department head
+  6: [
+    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
@@ -158,19 +157,18 @@ const roleSidebarMap = {
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },
       { label: "KPI", icon: LetterText, path: "/kpi", my: false },
       { label: "Policy", icon: Shield, path: "/policy", my: false },
-      // my section
+        // my section
       ...MY_SECTION
-    ],
-    // Lead
-    7: [
+  ],
+  // Lead
+  7: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
-      // my section
+        // my section
       ...MY_SECTION
-    ],
-    // Employee
-    8: [
-      { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
-      { label: "Applications", icon: Ticket, path: "/applications", my: true },
+  ],
+  // Employee
+  8: [
+    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
         // my section
       ...MY_SECTION
   ],

@@ -129,7 +129,7 @@ function AppContent() {
           <Route path="/sync" element={<AttendanceSync />} />
 
           {/* My Section */}
-          <Route path="/my-applications" element={<MyApplications />} />
+          <Route path="/my-applications" element={<Applications />} />
           <Route path="/my-notices" element={<MyNotices />} />
           <Route path="/my-training" element={<MyTraining />} />
           <Route path="/my-policies" element={<MyPolicy />} />
