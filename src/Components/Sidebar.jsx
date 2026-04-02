@@ -1,9 +1,19 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/rig.png";
-import { ArrowBigRight } from "lucide-react";
+import {
+  ArrowBigRight,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
-export default function Sidebar({ isOpen, setIsOpen, sidebarItems = [] }) {
+export default function Sidebar({
+  isOpen,
+  setIsOpen,
+  sidebarItems = [],
+  collapsed = false,
+  setCollapsed = () => {},
+}) {
   const navigate = useNavigate();
 
   const handleNavigate = (path) => {
@@ -11,7 +21,6 @@ export default function Sidebar({ isOpen, setIsOpen, sidebarItems = [] }) {
     setIsOpen(false);
   };
 
-  // 🔹 Split sections
   const mainItems = sidebarItems.filter((item) => !item.my);
   const myItems = sidebarItems.filter((item) => item.my);
 
@@ -29,40 +38,50 @@ export default function Sidebar({ isOpen, setIsOpen, sidebarItems = [] }) {
       <aside
         className={`
           fixed top-0 left-0 z-50 h-screen
-          w-64 bg-[rgba(255,244,240,0.95)]
+          ${collapsed ? "w-20" : "w-64"}
+          bg-[rgba(255,244,240,0.95)]
           border-r border-gray-200 rounded-r-2xl
           shadow-lg flex flex-col
-          transform transition-transform duration-300
+          transform transition-all duration-300
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           md:translate-x-0
         `}
       >
-        {/* Logo */}
-        <div className="p-6 border-b border-[rgba(176,41,0,0.3)]">
-          <img src={logo} alt="Rig Logo" className="w-24 mx-auto" />
+        {/* Logo + Toggle */}
+        <div className="p-4 border-b border-[rgba(176,41,0,0.3)] flex items-center justify-between">
+          {!collapsed && (
+            <img src={logo} alt="Rig Logo" className="w-24" />
+          )}
+
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-2 rounded-lg hover:bg-red-100"
+          >
+            {collapsed ? <ChevronRight /> : <ChevronLeft />}
+          </button>
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+        <div className="flex-1 overflow-y-auto px-2 py-6 space-y-6">
 
-          {/* MAIN SECTION */}
-          <Section title="Main">
+          <Section title="Main" collapsed={collapsed}>
             {mainItems.map((item) => (
               <SidebarItem
                 key={item.label}
                 item={item}
+                collapsed={collapsed}
                 onClick={handleNavigate}
               />
             ))}
           </Section>
 
-          {/* MY SECTION (only if exists) */}
           {myItems.length > 0 && (
-            <Section title="My">
+            <Section title="My" collapsed={collapsed}>
               {myItems.map((item) => (
                 <SidebarItem
                   key={item.label}
                   item={item}
+                  collapsed={collapsed}
                   onClick={handleNavigate}
                 />
               ))}
@@ -75,14 +94,16 @@ export default function Sidebar({ isOpen, setIsOpen, sidebarItems = [] }) {
 }
 
 /* ===================== */
-/* 🔹 Section Wrapper */
+/* 🔹 Section */
 /* ===================== */
-function Section({ title, children }) {
+function Section({ title, children, collapsed }) {
   return (
     <div>
-      <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3 tracking-wider">
-        {title}
-      </h4>
+      {!collapsed && (
+        <h4 className="text-xs font-semibold text-gray-600 uppercase mb-3 px-2 tracking-wider">
+          {title}
+        </h4>
+      )}
       <ul className="space-y-2">{children}</ul>
     </div>
   );
@@ -91,15 +112,15 @@ function Section({ title, children }) {
 /* ===================== */
 /* 🔹 Sidebar Item */
 /* ===================== */
-function SidebarItem({ item, onClick }) {
+function SidebarItem({ item, onClick, collapsed }) {
   const Icon = item.icon;
 
   return (
     <li
       onClick={() => onClick(item.path)}
       className="
-        group flex items-center gap-3
-        px-4 py-3 rounded-lg cursor-pointer
+        relative group flex items-center gap-3
+        px-3 py-3 rounded-lg cursor-pointer
         border border-transparent
         hover:bg-red-500 hover:border-red-700
         transition
@@ -117,11 +138,28 @@ function SidebarItem({ item, onClick }) {
       </div>
 
       {/* Label */}
-      <span className="text-sm font-medium text-gray-800 flex-1">
-        {item.label}
-      </span>
+      {!collapsed && (
+        <>
+          <span className="text-sm font-medium text-gray-800 flex-1">
+            {item.label}
+          </span>
 
-      <ArrowBigRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
+          <ArrowBigRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
+        </>
+      )}
+
+      {/* Tooltip (when collapsed) */}
+      {collapsed && (
+        <span
+          className="
+            absolute left-16 bg-black text-white text-xs
+            px-2 py-1 rounded opacity-0 group-hover:opacity-100
+            whitespace-nowrap transition
+          "
+        >
+          {item.label}
+        </span>
+      )}
     </li>
   );
 }

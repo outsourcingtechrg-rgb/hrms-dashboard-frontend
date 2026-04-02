@@ -7,6 +7,7 @@ import { Outlet } from "react-router-dom";
 
 export default function PageRender({ sidebarItems, onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const metricsData = [
     { label: "Attendance", value: "98%", change: 5.2, icon: UserCheck },
     { label: "Trainings Completed", value: 5, change: 5.2, icon: BookOpen },
@@ -19,9 +20,15 @@ export default function PageRender({ sidebarItems, onLogout }) {
         isOpen={isOpen}
         setIsOpen={setIsOpen}
         sidebarItems={sidebarItems}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
       />
 
-      <div className="flex flex-col min-h-screen md:ml-64">
+      <div
+        className={`flex flex-col min-h-screen transition-all duration-300 ${
+          sidebarCollapsed ? "md:ml-20" : "md:ml-64"
+        }`}
+      >
         <Navbar setIsOpen={setIsOpen} onLogout={onLogout} />
 
         <Outlet />

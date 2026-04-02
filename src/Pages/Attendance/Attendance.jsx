@@ -1170,7 +1170,12 @@ export default function EmployeesAttendancePage() {
   const fetchEmployees = useCallback(async () => {
     setEmpLoad(true);
     try {
-      const res = await fetch(API.GetAllEmployees);
+      const token = localStorage.getItem("access_token");
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const res = await fetch(API.GetAllEmployees, { headers });
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       let list = Array.isArray(data) ? data : data.employees || [];
@@ -1194,7 +1199,12 @@ export default function EmployeesAttendancePage() {
   /* ── Fetch departments ── */
   const fetchDepts = useCallback(async () => {
     try {
-      const res = await fetch(API.ListDepartment);
+      const token = localStorage.getItem("access_token");
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const res = await fetch(API.ListDepartment, { headers });
       if (!res.ok) return;
       const data = await res.json();
       setDepts(Array.isArray(data) ? data : data.departments || []);
@@ -1208,6 +1218,11 @@ export default function EmployeesAttendancePage() {
     setRecLoad(true);
     setRecErr(null);
     try {
+      const token = localStorage.getItem("access_token");
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
       /* Use admin/records endpoint — already enriched with employee info
          and already filtered to system employees only (no ZKT ghosts).
          For dept head: pass department_id so the server scopes it. */
@@ -1221,7 +1236,7 @@ export default function EmployeesAttendancePage() {
         params.set("department_id", String(auth.department_id));
       }
 
-      const res = await fetch(`${base}?${params}`);
+      const res = await fetch(`${base}?${params}`, { headers });
       if (!res.ok) throw new Error(`Error ${res.status}`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : data.records || [];
@@ -1238,6 +1253,11 @@ export default function EmployeesAttendancePage() {
   const fetchSummary = useCallback(async () => {
     setSumLoad(true);
     try {
+      const token = localStorage.getItem("access_token");
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
       const base =
         typeof API.AdminAttendanceSummary === "string"
           ? API.AdminAttendanceSummary
@@ -1248,7 +1268,7 @@ export default function EmployeesAttendancePage() {
         params.set("department_id", String(auth.department_id));
       }
 
-      const res = await fetch(`${base}?${params}`);
+      const res = await fetch(`${base}?${params}`, { headers });
       if (!res.ok) throw new Error(res.status);
       setSummary(await res.json());
     } catch {
@@ -1284,6 +1304,11 @@ export default function EmployeesAttendancePage() {
 
       try {
         /* Reuse admin/records endpoint scoped to one employee */
+        const token = localStorage.getItem("access_token");
+        const headers = {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
         const base =
           typeof API.AdminAttendanceRecords === "string"
             ? API.AdminAttendanceRecords
@@ -1291,6 +1316,7 @@ export default function EmployeesAttendancePage() {
 
         const res = await fetch(
           `${base}?employee_id=${empDbId}&month=${month}`,
+          { headers },
         );
         if (res.ok) {
           const data = await res.json();

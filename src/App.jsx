@@ -8,6 +8,7 @@ import {
 
 import { resolveUserUI } from "./auth/roleResolver";
 import ProtectedRoute from "./auth/ProtectedRoute";
+import { parseJwt } from "./utils/auth";
 
 import PageRender from "./Pages/PageRender";
 import LoginForm from "./Pages/Login/LoginForm";
@@ -15,9 +16,7 @@ import ForgotPasswordModal from "./Pages/Login/ForgotPasswordModal";
 
 // Pages
 import Employees from "./Pages/employee_mangmant/Employees";
-import Reports from "./Pages/Reports/Reports";
 import Attendance from "./Pages/Attendance/Attendance";
-import Training from "./Pages/Traning/Traning";
 import Policy from "./Pages/Policies/Policies";
 import KPI from "./Pages/KPI/KPI";
 import NewPassword from "./Pages/Login/NewPassword";
@@ -29,39 +28,89 @@ import RolesPage from "./Pages/Roles/Roles";
 import Shifts from "./Pages/Shifts/Shifts";
 import AttendanceSync from "./Pages/AttendanceSync/AttendanceSync";
 import ResetPassword from "./Pages/Login/ResetPassword";
-// My pages
+
+// My Pages
 import MyNotices from "./Pages/MySection/MyNotices";
 import MyApplications from "./Pages/MySection/myApplications";
 import MyTraining from "./Pages/MySection/MyTraining";
 import MyPolicy from "./Pages/MySection/MyPolicies";
 import MyAttendance from "./Pages/MySection/MyAttendance";
 
+import ComingSoon from "./Pages/CommingSoon/CommingSoon";
+
 function AppContent() {
   const [ui, setUI] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // ✅ FIX: moved inside component
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
+  // 🔁 Refresh UI after login
   async function refreshUI() {
     setLoading(true);
-    const resolved = await resolveUserUI();
-    setUI(resolved);
-    setLoading(false);
+    try {
+      const resolved = await resolveUserUI();
+      setUI(resolved);
+    } finally {
+      setLoading(false);
+    }
   }
 
+  // 🔐 Logout
   function logout() {
     localStorage.removeItem("access_token");
     setUI(null);
   }
 
+  // 🚀 Init + Auto Logout
   useEffect(() => {
+    let logoutTimer;
+    let isMounted = true;
+
     async function init() {
-      const resolved = await resolveUserUI();
-      setUI(resolved);
-      setLoading(false);
+      const token = localStorage.getItem("access_token");
+
+      if (!token) {
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      const decoded = parseJwt(token);
+
+      if (!decoded) {
+        logout();
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      // ⏳ Auto logout
+      const expiryTime = decoded.exp * 1000;
+      const timeout = expiryTime - Date.now();
+
+      if (timeout <= 0) {
+        logout();
+        if (isMounted) setLoading(false);
+        return;
+      }
+
+      logoutTimer = setTimeout(logout, timeout);
+
+      // 🎯 Load UI
+      try {
+        const resolved = await resolveUserUI();
+        if (isMounted) setUI(resolved);
+      } catch (err) {
+        console.error("UI load failed", err);
+        logout();
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     }
+
     init();
+
+    return () => {
+      isMounted = false;
+      if (logoutTimer) clearTimeout(logoutTimer);
+    };
   }, []);
 
   if (loading) {
@@ -81,7 +130,7 @@ function AppContent() {
   return (
     <>
       <Routes>
-        {/* Login */}
+        {/* 🔓 Public */}
         <Route
           path="/login"
           element={
@@ -96,40 +145,96 @@ function AppContent() {
           }
         />
 
-        {/* Change Password */}
+        <Route path="/reset-password" element={<ResetPassword />} />
+
         <Route
           path="/change-password"
           element={ui ? <NewPassword /> : <Navigate to="/login" replace />}
         />
 
-        {/* Protected */}
+        {/* 🔐 Protected Layout */}
         <Route
           element={
-            <ProtectedRoute ui={ui}>
+            <ProtectedRoute>
               <PageRender sidebarItems={Sidebar} onLogout={logout} />
             </ProtectedRoute>
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/applications" element={<Applications />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/attendance" element={<Attendance />} />
+
+          <Route
+            path="/employees"
+            element={
+              <ProtectedRoute minLevel={6}>
+                <Employees />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/departments"
+            element={
+              <ProtectedRoute minLevel={4}>
+                <DepartmentPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute minLevel={1}>
+                <RolesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/shifts"
+            element={
+              <ProtectedRoute minLevel={4}>
+                <Shifts />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/attendance"
+            element={
+              <ProtectedRoute minLevel={7}>
+                <Attendance />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/attendance/employee/:employeeId"
-            element={<EmployeeAttendanceDetails />}
+            element={
+              <ProtectedRoute minLevel={6}>
+                <EmployeeAttendanceDetails />
+              </ProtectedRoute>
+            }
           />
-          <Route path="/training" element={<Training />} />
-          <Route path="/policy" element={<Policy />} />
-          <Route path="/kpi" element={<KPI />} />
-          <Route path="/notice" element={<Notice />} />
-          <Route path="/departments" element={<DepartmentPage />} />
-          <Route path="/roles" element={<RolesPage />} />
-          <Route path="/shifts" element={<Shifts />} />
-          <Route path="/sync" element={<AttendanceSync />} />
 
-          {/* My Section */}
-          <Route path="/my-applications" element={<Applications />} />
+          <Route
+            path="/sync"
+            element={
+              <ProtectedRoute minLevel={3}>
+                <AttendanceSync />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/applications" element={<Applications />} />
+          <Route path="/policy" element={<Policy />} />
+          <Route path="/notice" element={<Notice />} />
+          <Route path="/kpi" element={<KPI />} />
+
+          <Route path="/reports" element={<ComingSoon />} />
+          <Route path="/training" element={<ComingSoon />} />
+
+          {/* 👤 My Section */}
+          <Route path="/my-applications" element={<MyApplications />} />
           <Route path="/my-notices" element={<MyNotices />} />
           <Route path="/my-training" element={<MyTraining />} />
           <Route path="/my-policies" element={<MyPolicy />} />
@@ -141,11 +246,15 @@ function AppContent() {
           path="/"
           element={<Navigate to={ui ? "/dashboard" : "/login"} replace />}
         />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="*" element={<Navigate to={ui ? "/dashboard" : "/login"} replace />} />
+
+        {/* 404 */}
+        <Route
+          path="*"
+          element={<Navigate to={ui ? "/dashboard" : "/login"} replace />}
+        />
       </Routes>
 
-      {/* ✅ Modal OUTSIDE Routes */}
+      {/* Forgot Password Modal */}
       <ForgotPasswordModal
         isOpen={showForgotPassword}
         onClose={() => setShowForgotPassword(false)}

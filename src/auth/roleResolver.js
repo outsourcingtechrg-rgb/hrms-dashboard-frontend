@@ -8,6 +8,7 @@ import DepartmentHeadDashboard from "../Pages/Dashboard/DepartmentHeadDashboard"
 import LeadDashboard from "../Pages/Dashboard/LeadDashboard";
 import EmployeeDashboard from "../Pages/Dashboard/EmployeeDashboard";
 import InternDashboard from "../Pages/Dashboard/InternDashboard";
+import FinanceDashboard from "../Pages/Dashboard/FinanceDashboard";
 
 
 import {
@@ -42,30 +43,30 @@ function decodeJWT(token) {
 /* =========================
    DASHBOARD MAP
 ========================= */
-// const roleDashboardMap = {
-//   1: SupperAdminDashboard,
-//   2: CeoDashboard,
-//   3: HrAdminDashboard,
-//   4: HrDashboard,
-//   5: FinanceDashboard,
-//   6: DepartmentHeadDashboard,
-//   7: LeadDashboard,
-//   8: EmployeeDashboard,
-//   9: InternDashboard,
-// };
-
-//  for testing propose only
 const roleDashboardMap = {
   1: SupperAdminDashboard,
   2: CeoDashboard,
   3: HrAdminDashboard,
   4: HrDashboard,
-  5: DepartmentHeadDashboard,
-  6: LeadDashboard,
+  5: FinanceDashboard,
+  6: DepartmentHeadDashboard,
   7: LeadDashboard,
-  8: InternDashboard,
+  8: EmployeeDashboard,
   9: InternDashboard,
 };
+
+//  for testing propose only
+// const roleDashboardMap = {
+//   1: SupperAdminDashboard,
+//   2: CeoDashboard,
+//   3: HrAdminDashboard,
+//   4: HrDashboard,
+//   5: DepartmentHeadDashboard,
+//   6: LeadDashboard,
+//   7: LeadDashboard,
+//   8: EmployeeDashboard,
+//   9: EmployeeDashboard,
+// };
 const MY_SECTION = [
   { label: "My Attendance", icon: Clock, path: "/my-attendance", my: true },
   { label: "My Applications", icon: Ticket, path: "/my-applications", my: true },
@@ -102,7 +103,7 @@ const roleSidebarMap = {
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
       { label: "Employees", icon: Users, path: "/employees", my: false },
-      { label: "departments", icon: House, path: "/departments", my: false },
+      { label: "Departments", icon: House, path: "/departments", my: false },
       { label: "Reports", icon: FileText, path: "/reports", my: false },
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },
       { label: "KPI", icon: LetterText, path: "/kpi", my: false },
@@ -115,7 +116,7 @@ const roleSidebarMap = {
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
-      { label: "departments", icon: House, path: "/departments", my: false },
+      // { label: "departments", icon: House, path: "/departments", my: false },
       { label: "Employees", icon: Users, path: "/employees", my: false },
       { label: "Reports", icon: FileText, path: "/reports", my: false },
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },

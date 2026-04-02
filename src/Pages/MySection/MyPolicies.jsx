@@ -1,502 +1,732 @@
-import React, { useState, useMemo } from "react";
+/**
+ * MyPoliciesPage.jsx  —  Employee Policy View
+ *
+ * Fetches from GET /policies/my (EmployeePolicyItem list)
+ * Each item includes:
+ *   acknowledged : bool   — has THIS employee acknowledged it?
+ *   acked_at     : string — when they acknowledged
+ *   mandatory    : bool   — requires acknowledgement
+ *
+ * Features:
+ *   - Filter by All / Acknowledged / Pending tabs
+ *   - Filter by category, mandatory
+ *   - Search
+ *   - Click to expand full policy + acknowledge button
+ *   - Mandatory unacknowledged policies highlighted at top
+ *
+ * API:
+ *   GET  /policies/my                    → EmployeePolicyItem[]
+ *   POST /policies/{id}/acknowledge      → AcknowledgeOut
+ *   GET  /policies/{id}                  → PolicyOut (full content)
+ */
+
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  BookOpen, CheckCircle2, Clock, ShieldAlert, Eye, ChevronLeft,
-  ChevronRight, Search, X, FileText, AlertCircle, BadgeCheck
+  Search,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  Lock,
+  Star,
+  Users,
+  FileText,
+  Building2,
+  Shield,
+  Layers,
+  Award,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  RefreshCw,
+  BadgeCheck,
+  AlertCircle,
+  Loader2,
+  X,
+  BookOpen,
+  ThumbsUp,
 } from "lucide-react";
+import { API } from "../../Components/Apis";
 
-/* ─── Reused from attendance page ─── */
-function IconBadge({ icon: Icon, color }) {
-  return (
-    <span className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border ${color}`}>
-      <Icon className="w-5 h-5" />
-    </span>
-  );
+/* ─── Animations ─── */
+const STYLES = `
+  @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+  @keyframes slideUp { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
+  @keyframes mpSpin { to{transform:rotate(360deg)} }
+  .mp-fade  { animation: fadeIn .2s ease-out; }
+  .mp-up    { animation: slideUp .25s ease-out forwards; }
+  .mp-spin  { animation: mpSpin .85s linear infinite; }
+`;
+if (
+  typeof document !== "undefined" &&
+  !document.getElementById("__mpp_styles__")
+) {
+  const s = document.createElement("style");
+  s.id = "__mpp_styles__";
+  s.innerHTML = STYLES;
+  document.head.appendChild(s);
 }
 
-function Widget({ title, value, sub, icon, color }) {
-  return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm flex gap-4 items-center">
-      <IconBadge icon={icon} color={color} />
-      <div>
-        <p className="text-sm text-gray-400">{title}</p>
-        <h3 className="text-2xl font-semibold">{value}</h3>
-        {sub && <p className="text-xs text-gray-400">{sub}</p>}
-      </div>
-    </div>
-  );
+function getAuthHeaders() {
+  const token = localStorage.getItem("access_token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
 }
 
-function Card({ title, children, action }) {
-  return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-medium text-gray-500">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
+function fmtDate(iso) {
+  if (!iso) return "—";
+  return String(iso).slice(0, 10);
 }
 
-/* ─── Mock policy data ─── */
-const CATEGORIES = ["HR", "IT & Security", "Finance", "Legal", "Operations", "Health & Safety"];
-
-const POLICY_TITLES = [
-  "Code of Conduct", "Remote Work Policy", "Data Privacy & Protection",
-  "Anti-Harassment Policy", "Expense Reimbursement Guidelines", "IT Acceptable Use Policy",
-  "Annual Leave Policy", "Confidentiality Agreement", "Social Media Policy",
-  "Workplace Health & Safety", "Performance Review Process", "Onboarding Handbook",
-  "Travel & Accommodation Policy", "Whistleblower Protection Policy", "Conflict of Interest Policy",
-  "Password & Access Management", "Disciplinary Procedure", "Equal Opportunity Policy",
-  "Payroll & Compensation Policy", "Business Continuity Plan",
+/* ─── Config ─── */
+const CATEGORIES = [
+  "HR Policy",
+  "IT & Security",
+  "Finance",
+  "Legal",
+  "Health & Safety",
+  "Operations",
+  "Code of Conduct",
+  "Benefits",
 ];
 
-const generatePolicies = () =>
-  POLICY_TITLES.map((title, i) => {
-    const isRead = Math.random() > 0.45;
-    const updatedDaysAgo = Math.floor(Math.random() * 180);
-    const updatedDate = new Date(2026, 2, 5);
-    updatedDate.setDate(updatedDate.getDate() - updatedDaysAgo);
-    const mandatory = Math.random() > 0.4;
-    const version = `v${Math.floor(Math.random() * 3) + 1}.${Math.floor(Math.random() * 9)}`;
-    return {
-      id: 100 + i,
-      title,
-      category: CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)],
-      isRead,
-      readDate: isRead
-        ? new Date(updatedDate.getTime() + Math.random() * 7 * 86400000).toISOString().split("T")[0]
-        : null,
-      updatedDate: updatedDate.toISOString().split("T")[0],
-      mandatory,
-      version,
-      pages: Math.floor(Math.random() * 20) + 2,
-    };
-  });
-
-/* ─── Category colors ─── */
-const CAT_COLORS = {
-  "HR":               "bg-pink-50 text-pink-700",
-  "IT & Security":    "bg-cyan-50 text-cyan-700",
-  "Finance":          "bg-green-50 text-green-700",
-  "Legal":            "bg-violet-50 text-violet-700",
-  "Operations":       "bg-orange-50 text-orange-700",
-  "Health & Safety":  "bg-red-50 text-red-700",
+const CAT_CFG = {
+  "HR Policy": {
+    color: "bg-violet-50 text-violet-700",
+    border: "border-violet-200",
+    icon: Users,
+  },
+  "IT & Security": {
+    color: "bg-cyan-50 text-cyan-700",
+    border: "border-cyan-200",
+    icon: Lock,
+  },
+  Finance: {
+    color: "bg-green-50 text-green-700",
+    border: "border-green-200",
+    icon: Building2,
+  },
+  Legal: {
+    color: "bg-red-50 text-red-700",
+    border: "border-red-200",
+    icon: Shield,
+  },
+  "Health & Safety": {
+    color: "bg-orange-50 text-orange-700",
+    border: "border-orange-200",
+    icon: AlertTriangle,
+  },
+  Operations: {
+    color: "bg-blue-50 text-blue-700",
+    border: "border-blue-200",
+    icon: Layers,
+  },
+  "Code of Conduct": {
+    color: "bg-gray-50 text-gray-700",
+    border: "border-gray-200",
+    icon: Award,
+  },
+  Benefits: {
+    color: "bg-amber-50 text-amber-700",
+    border: "border-amber-200",
+    icon: Star,
+  },
 };
 
-/* ─── Policy Detail Modal ─── */
-function PolicyModal({ policy, onClose, onMarkRead }) {
-  if (!policy) return null;
+/* ─── Toast ─── */
+function Toast({ msg, type = "success" }) {
+  if (!msg) return null;
+  const bg = type === "error" ? "bg-red-600" : "bg-emerald-600";
+  const Icon = type === "error" ? AlertCircle : CheckCircle2;
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-100">
-          <div className="flex-1 pr-4">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-lg ${CAT_COLORS[policy.category]}`}>
-                {policy.category}
-              </span>
-              {policy.mandatory && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 text-red-600 border border-red-200">
-                  Mandatory
-                </span>
-              )}
-              <span className="text-xs text-gray-400">{policy.version}</span>
-            </div>
-            <h2 className="text-base font-semibold text-gray-900">{policy.title}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition shrink-0"
-          ><X size={15} /></button>
-        </div>
-
-        {/* Body */}
-        <div className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "Last Updated", value: policy.updatedDate },
-              { label: "Pages",        value: `${policy.pages} pages` },
-              { label: "Status",       value: policy.isRead ? "Read" : "Unread" },
-              { label: "Read On",      value: policy.readDate || "—" },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-gray-50 rounded-xl p-3">
-                <div className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1">{label}</div>
-                <div className={`text-sm font-medium ${label === "Status" && !policy.isRead ? "text-amber-600" : label === "Status" ? "text-emerald-600" : "text-gray-800"}`}>
-                  {value}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Simulated document preview */}
-          <div className="bg-gray-50 rounded-xl p-4 border border-dashed border-gray-200 space-y-2">
-            <div className="flex items-center gap-2 text-gray-400 text-xs mb-3">
-              <FileText size={13} /> Document Preview
-            </div>
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className={`h-2.5 rounded-full bg-gray-200 ${i === 4 ? "w-2/3" : "w-full"}`} />
-            ))}
-            <div className="h-2.5 rounded-full bg-gray-200 w-5/6 mt-1" />
-            <div className="h-2.5 rounded-full bg-gray-200 w-full mt-1" />
-            <div className="h-2.5 rounded-full bg-gray-200 w-3/4 mt-1" />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 pb-6 flex gap-3">
-          {!policy.isRead && (
-            <button
-              onClick={() => { onMarkRead(policy.id); onClose(); }}
-              className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition"
-            >Mark as Read</button>
-          )}
-          <button
-            onClick={onClose}
-            className={`${policy.isRead ? "flex-1" : ""} py-2.5 px-5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition`}
-          >{policy.isRead ? "Close" : "Read Later"}</button>
-        </div>
-      </div>
+    <div
+      className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-500 flex items-center gap-3 px-5 py-3 rounded-2xl text-white text-sm font-semibold shadow-2xl pointer-events-none mp-fade ${bg}`}
+    >
+      <Icon size={15} /> {msg}
     </div>
   );
 }
 
-/* ─── Main Page ─── */
-export default function MyPoliciesPage() {
-  const [policies, setPolicies] = useState(generatePolicies);
-  const [search, setSearch]     = useState("");
-  const [filterCat, setFilterCat] = useState("All");
-  const [filterRead, setFilterRead] = useState("All"); // All | Read | Unread
-  const [filterMandatory, setFilterMandatory] = useState("All");
-  const [page, setPage]         = useState(1);
-  const [selected, setSelected] = useState(null);
-  const PAGE_SIZE = 8;
+/* ─── Policy Card ─── */
+function PolicyCard({ policy, onAcknowledge }) {
+  const [expanded, setExpanded] = useState(false);
+  const [content, setContent] = useState(null);
+  const [loadingContent, setLoadingContent] = useState(false);
+  const [acking, setAcking] = useState(false);
+  const [localAcked, setLocalAcked] = useState(policy.acknowledged);
+  const [localAckedAt, setLocalAckedAt] = useState(policy.acked_at);
 
-  /* Stats */
-  const stats = useMemo(() => ({
-    total:     policies.length,
-    read:      policies.filter(p => p.isRead).length,
-    unread:    policies.filter(p => !p.isRead).length,
-    mandatory: policies.filter(p => p.mandatory && !p.isRead).length,
-  }), [policies]);
+  const catCfg = CAT_CFG[policy.category] || {};
+  const CatIcon = catCfg.icon || FileText;
 
-  /* Filtering */
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return policies.filter(p =>
-      (!q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q)) &&
-      (filterCat       === "All" || p.category === filterCat) &&
-      (filterRead      === "All" || (filterRead === "Read" ? p.isRead : !p.isRead)) &&
-      (filterMandatory === "All" || (filterMandatory === "Mandatory" ? p.mandatory : !p.mandatory))
-    );
-  }, [search, filterCat, filterRead, filterMandatory, policies]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  const resetPage = fn => { fn(); setPage(1); };
-
-  const markRead = id => {
-    setPolicies(prev => prev.map(p =>
-      p.id === id ? { ...p, isRead: true, readDate: new Date().toISOString().split("T")[0] } : p
-    ));
+  const handleExpand = async () => {
+    if (!expanded && !content) {
+      setLoadingContent(true);
+      try {
+        const res = await fetch(API.PolicyById(policy.id), {
+          headers: getAuthHeaders(),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setContent(data.content);
+        }
+      } catch {
+        /* silent */
+      } finally {
+        setLoadingContent(false);
+      }
+    }
+    setExpanded((v) => !v);
   };
 
-  const markAllRead = () => {
-    setPolicies(prev => prev.map(p =>
-      !p.isRead ? { ...p, isRead: true, readDate: new Date().toISOString().split("T")[0] } : p
-    ));
+  const handleAcknowledge = async () => {
+    setAcking(true);
+    try {
+      const res = await fetch(API.AcknowledgePolicy(policy.id), {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d?.detail || "Failed");
+      }
+      const data = await res.json();
+      setLocalAcked(true);
+      setLocalAckedAt(data.acked_at);
+      onAcknowledge(policy.id);
+    } catch (err) {
+      /* toast handled by parent via onAcknowledge */
+    } finally {
+      setAcking(false);
+    }
   };
 
-  /* Active filters */
-  const activeFilters = [
-    filterCat       !== "All" && { key: "cat",       label: filterCat },
-    filterRead      !== "All" && { key: "read",      label: filterRead },
-    filterMandatory !== "All" && { key: "mandatory", label: filterMandatory },
-    search                    && { key: "search",    label: `"${search}"` },
-  ].filter(Boolean);
-
-  const clearFilter = key => {
-    setPage(1);
-    if (key === "cat")       setFilterCat("All");
-    if (key === "read")      setFilterRead("All");
-    if (key === "mandatory") setFilterMandatory("All");
-    if (key === "search")    setSearch("");
-  };
+  const urgency = policy.mandatory && !localAcked;
 
   return (
-    <div className="min-h-screen bg-gray-50 px-8 py-10 text-gray-900">
+    <div
+      className={`bg-white rounded-2xl shadow-sm border transition-all mp-up ${urgency ? "border-red-200 ring-1 ring-red-100" : "border-gray-100"}`}
+    >
+      {/* Card Header */}
+      <div className="p-5 flex items-start gap-4">
+        {/* Category icon */}
+        <div
+          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${catCfg.color} ${catCfg.border}`}
+        >
+          <CatIcon size={16} />
+        </div>
 
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span
+              className={`text-xs font-medium px-2 py-0.5 rounded-lg ${catCfg.color}`}
+            >
+              {policy.category}
+            </span>
+            {policy.mandatory && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200">
+                ★ Mandatory
+              </span>
+            )}
+            {policy.pinned && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+                Pinned
+              </span>
+            )}
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 leading-snug">
+            {policy.title}
+          </h3>
+          <p className="text-sm text-gray-500 mt-1 leading-relaxed line-clamp-2">
+            {policy.summary}
+          </p>
+          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-400">
+            <span>v{policy.version}</span>
+            <span>·</span>
+            <span>Updated {fmtDate(policy.updated_at)}</span>
+            {policy.ack_count > 0 && (
+              <>
+                <span>·</span>
+                <span>
+                  {policy.ack_count}/{policy.total_recipients} acknowledged
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Ack status + read button */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {/* Ack status badge */}
+          {localAcked ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-700">
+              <BadgeCheck size={13} />
+              <span>Acknowledged</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-700">
+              <Clock size={12} />
+              <span>Pending</span>
+            </div>
+          )}
+
+          {/* Expand toggle */}
+          <button
+            onClick={handleExpand}
+            className="flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition"
+          >
+            <BookOpen size={12} />
+            {expanded ? "Collapse" : "Read"}
+            {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div className="px-5 pb-5 border-t border-gray-100 pt-4 space-y-4 mp-fade">
+          {loadingContent ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 size={20} className="mp-spin text-gray-300" />
+            </div>
+          ) : (
+            <>
+              <div className="bg-gray-50 rounded-xl p-4 max-h-72 overflow-y-auto">
+                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+                  {content || policy.summary}
+                </pre>
+              </div>
+
+              {/* Acknowledgement section */}
+              <div
+                className={`rounded-xl p-4 flex items-center justify-between gap-4 ${localAcked ? "bg-emerald-50 border border-emerald-100" : "bg-amber-50 border border-amber-100"}`}
+              >
+                <div>
+                  {localAcked ? (
+                    <>
+                      <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm">
+                        <BadgeCheck size={16} /> You have acknowledged this
+                        policy
+                      </div>
+                      {localAckedAt && (
+                        <p className="text-xs text-emerald-600 mt-0.5">
+                          Acknowledged on {fmtDate(localAckedAt)}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-amber-700 font-semibold text-sm">
+                        {policy.mandatory
+                          ? "⚠️ Acknowledgement Required"
+                          : "Acknowledge this policy?"}
+                      </div>
+                      <p className="text-xs text-amber-600 mt-0.5">
+                        {policy.mandatory
+                          ? "This is a mandatory policy. Please read and acknowledge it."
+                          : "Click to confirm you have read and understood this policy."}
+                      </p>
+                    </>
+                  )}
+                </div>
+                {!localAcked && (
+                  <button
+                    onClick={handleAcknowledge}
+                    disabled={acking}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-sm font-semibold rounded-xl transition shrink-0"
+                  >
+                    {acking ? (
+                      <>
+                        <Loader2 size={13} className="mp-spin" /> Acknowledging…
+                      </>
+                    ) : (
+                      <>
+                        <ThumbsUp size={13} /> Acknowledge
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MyPoliciesPage — Main
+═══════════════════════════════════════════════════════════════ */
+export default function MyPoliciesPage() {
+  const [policies, setPolicies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const [search, setSearch] = useState("");
+  const [filterCat, setFilterCat] = useState("All");
+  const [filterTab, setFilterTab] = useState("All"); // All | Pending | Acknowledged
+  const [filterMand, setFilterMand] = useState("All"); // All | Mandatory | Optional
+  const [toast, setToast] = useState(null);
+
+  const showToast = useCallback((msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+
+  const fetchPolicies = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(API.MyPolicies(), { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      setPolicies(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPolicies();
+  }, [fetchPolicies]);
+
+  // Called when a card acknowledges — update local state
+  const handleAcknowledge = useCallback(
+    (policyId) => {
+      setPolicies((prev) =>
+        prev.map((p) =>
+          p.id === policyId
+            ? { ...p, acknowledged: true, acked_at: new Date().toISOString() }
+            : p,
+        ),
+      );
+      showToast("Policy acknowledged!", "success");
+    },
+    [showToast],
+  );
+
+  /* Stats */
+  const total = policies.length;
+  const acknowledged = policies.filter((p) => p.acknowledged).length;
+  const pending = total - acknowledged;
+  const mandatory = policies.filter((p) => p.mandatory).length;
+  const mandPending = policies.filter(
+    (p) => p.mandatory && !p.acknowledged,
+  ).length;
+
+  /* Filtered list */
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return [...policies]
+      .sort((a, b) => {
+        // Pinned first
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        // Mandatory + unacknowledged first
+        const urgA = a.mandatory && !a.acknowledged ? 0 : 1;
+        const urgB = b.mandatory && !b.acknowledged ? 0 : 1;
+        if (urgA !== urgB) return urgA - urgB;
+        return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+      })
+      .filter((p) => {
+        if (filterTab === "Pending") return !p.acknowledged;
+        if (filterTab === "Acknowledged") return p.acknowledged;
+        return true;
+      })
+      .filter((p) => filterCat === "All" || p.category === filterCat)
+      .filter((p) => {
+        if (filterMand === "Mandatory") return p.mandatory;
+        if (filterMand === "Optional") return !p.mandatory;
+        return true;
+      })
+      .filter(
+        (p) =>
+          !q ||
+          (p.title || "").toLowerCase().includes(q) ||
+          (p.summary || "").toLowerCase().includes(q) ||
+          (p.category || "").toLowerCase().includes(q),
+      );
+  }, [policies, filterTab, filterCat, filterMand, search]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 px-6 py-10 text-gray-900">
       {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold">My Policies</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Acknowledgement &amp; Compliance · {new Date().toDateString()}
-        </p>
+      <header className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold">My Policies</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Read and acknowledge company policies · {new Date().toDateString()}
+          </p>
+        </div>
+        <button
+          onClick={fetchPolicies}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-500 text-xs font-semibold rounded-xl transition disabled:opacity-40 self-start"
+        >
+          <RefreshCw size={13} className={loading ? "mp-spin" : ""} />
+          Refresh
+        </button>
       </header>
 
-      {/* Widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <Widget
-          title="Total Policies"
-          value={stats.total}
-          icon={BookOpen}
-          color="border-blue-300 bg-blue-50 text-blue-700"
-        />
-        <Widget
-          title="Read"
-          value={stats.read}
-          sub={`${Math.round((stats.read / stats.total) * 100)}% completion`}
-          icon={CheckCircle2}
-          color="border-green-300 bg-green-50 text-green-700"
-        />
-        <Widget
-          title="Unread"
-          value={stats.unread}
-          sub="Pending your review"
-          icon={Clock}
-          color="border-yellow-300 bg-yellow-50 text-yellow-700"
-        />
-        <Widget
-          title="Mandatory Unread"
-          value={stats.mandatory}
-          sub="Requires urgent attention"
-          icon={ShieldAlert}
-          color="border-red-300 bg-red-50 text-red-700"
-        />
+      {/* Mandatory urgent banner */}
+      {mandPending > 0 && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-6">
+          <AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-800">
+              {mandPending} mandatory polic{mandPending !== 1 ? "ies" : "y"}{" "}
+              need your acknowledgement
+            </p>
+            <p className="text-xs text-red-600 mt-0.5">
+              Please read and acknowledge these policies as soon as possible.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setFilterTab("Pending");
+              setFilterMand("Mandatory");
+            }}
+            className="text-xs font-semibold text-red-700 hover:underline shrink-0"
+          >
+            View now
+          </button>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-6">
+          <AlertCircle size={14} className="text-red-400 mt-0.5 shrink-0" />
+          <p className="text-xs text-red-600 flex-1">{error}</p>
+          <button
+            onClick={fetchPolicies}
+            className="text-xs font-semibold text-red-600 hover:underline shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        {[
+          {
+            label: "Total Policies",
+            value: total,
+            icon: FileText,
+            color: "bg-blue-50 text-blue-700 border-blue-200",
+          },
+          {
+            label: "Acknowledged",
+            value: acknowledged,
+            icon: BadgeCheck,
+            color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+          },
+          {
+            label: "Pending",
+            value: pending,
+            icon: Clock,
+            color: "bg-amber-50 text-amber-700 border-amber-200",
+          },
+          {
+            label: "Mandatory",
+            value: mandatory,
+            icon: AlertTriangle,
+            color: "bg-red-50 text-red-700 border-red-200",
+          },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <div
+            key={label}
+            className={`bg-white rounded-2xl p-5 shadow-sm border ${color.split(" ").find((c) => c.startsWith("border-"))}`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center border shrink-0 ${color}`}
+              >
+                <Icon size={16} />
+              </div>
+              <div>
+                <div className="text-xs text-gray-400">{label}</div>
+                {loading ? (
+                  <div className="h-7 w-10 bg-gray-100 rounded animate-pulse mt-0.5" />
+                ) : (
+                  <div className="text-2xl font-semibold text-gray-900">
+                    {value}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Progress bar */}
-      <div className="bg-white rounded-2xl p-5 shadow-sm mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700">Overall Completion</span>
-          <span className="text-sm font-semibold text-gray-900">
-            {stats.read}/{stats.total} policies read
-          </span>
+      {!loading && total > 0 && (
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700">
+              Overall Acknowledgement Progress
+            </span>
+            <span className="text-sm font-semibold text-gray-900">
+              {acknowledged}/{total}
+            </span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div
+              className="h-3 rounded-full transition-all duration-700 bg-linear-to-r from-emerald-400 to-emerald-600"
+              style={{
+                width: `${total > 0 ? Math.round((acknowledged / total) * 100) : 0}%`,
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between mt-2 text-xs text-gray-400">
+            <span>
+              {total > 0 ? Math.round((acknowledged / total) * 100) : 0}%
+              complete
+            </span>
+            {mandPending > 0 && (
+              <span className="text-red-500 font-medium">
+                {mandPending} mandatory pending
+              </span>
+            )}
+          </div>
         </div>
-        <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
-          <div
-            className="h-3 rounded-full bg-linear-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
-            style={{ width: `${(stats.read / stats.total) * 100}%` }}
-          />
-        </div>
-        <div className="flex justify-between mt-1.5">
-          <span className="text-xs text-gray-400">{Math.round((stats.read / stats.total) * 100)}% complete</span>
-          {stats.unread > 0 && (
-            <button
-              onClick={markAllRead}
-              className="text-xs text-emerald-600 font-medium hover:underline"
-            >Mark all as read</button>
-          )}
-        </div>
-      </div>
+      )}
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-        <div className="flex gap-3 flex-wrap items-center">
-          {/* Search */}
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      {/* Tabs + Filters */}
+      <div className="bg-white rounded-2xl shadow-sm mb-5 overflow-hidden">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100">
+          {[
+            { key: "All", label: "All Policies", count: total },
+            { key: "Pending", label: "Pending", count: pending },
+            { key: "Acknowledged", label: "Acknowledged", count: acknowledged },
+          ].map(({ key, label, count }) => (
+            <button
+              key={key}
+              onClick={() => setFilterTab(key)}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition ${
+                filterTab === key
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              {label}
+              <span
+                className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
+                  filterTab === key
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <Filter size={13} className="text-gray-400" />
+          <div className="relative flex-1 min-w-40">
+            <Search
+              size={12}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
             <input
               type="text"
               value={search}
-              onChange={e => resetPage(() => setSearch(e.target.value))}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search policies…"
-              className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:border-gray-400 transition placeholder-gray-400 w-48"
+              className="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-gray-400 transition placeholder-gray-400"
             />
           </div>
-
           <select
             value={filterCat}
-            onChange={e => resetPage(() => setFilterCat(e.target.value))}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-gray-400 cursor-pointer"
+            onChange={(e) => setFilterCat(e.target.value)}
+            className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-gray-400 cursor-pointer transition text-gray-700"
           >
             <option value="All">All Categories</option>
-            {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            {CATEGORIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
           </select>
-
           <select
-            value={filterRead}
-            onChange={e => resetPage(() => setFilterRead(e.target.value))}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-gray-400 cursor-pointer"
-          >
-            <option value="All">All Status</option>
-            <option value="Read">Read</option>
-            <option value="Unread">Unread</option>
-          </select>
-
-          <select
-            value={filterMandatory}
-            onChange={e => resetPage(() => setFilterMandatory(e.target.value))}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-gray-400 cursor-pointer"
+            value={filterMand}
+            onChange={(e) => setFilterMand(e.target.value)}
+            className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-gray-400 cursor-pointer transition text-gray-700"
           >
             <option value="All">All Types</option>
             <option value="Mandatory">Mandatory</option>
             <option value="Optional">Optional</option>
           </select>
-
-          {activeFilters.length > 0 && (
+          {(filterCat !== "All" || filterMand !== "All" || search) && (
             <button
-              onClick={() => { setSearch(""); setFilterCat("All"); setFilterRead("All"); setFilterMandatory("All"); setPage(1); }}
-              className="text-xs text-gray-400 hover:text-red-500 transition px-2 py-1.5 rounded-lg hover:bg-red-50"
-            >Clear all</button>
+              onClick={() => {
+                setFilterCat("All");
+                setFilterMand("All");
+                setSearch("");
+              }}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50 transition"
+            >
+              <X size={11} /> Clear
+            </button>
           )}
+          <span className="ml-auto text-xs text-gray-400">
+            {filtered.length} polic{filtered.length !== 1 ? "ies" : "y"}
+          </span>
         </div>
-
-        <span className="text-sm text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
       </div>
 
-      {/* Active filter pills */}
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {activeFilters.map(f => (
-            <span key={f.key} className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-900 text-white text-xs font-medium rounded-full">
-              {f.label}
-              <button className="opacity-60 hover:opacity-100 transition" onClick={() => clearFilter(f.key)}>
-                <X size={10} />
+      {/* Policy List */}
+      {loading ? (
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <Loader2 size={28} className="mp-spin text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-400">Loading your policies…</p>
+          </div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex items-center justify-center py-24">
+          <div className="text-center">
+            <FileText size={36} className="text-gray-200 mx-auto mb-3" />
+            <p className="text-base font-medium text-gray-400">
+              {filterTab === "Acknowledged"
+                ? "No acknowledged policies yet"
+                : filterTab === "Pending"
+                  ? "All caught up! No pending policies."
+                  : "No policies found"}
+            </p>
+            {(filterCat !== "All" || filterMand !== "All" || search) && (
+              <button
+                onClick={() => {
+                  setFilterCat("All");
+                  setFilterMand("All");
+                  setSearch("");
+                }}
+                className="mt-3 text-sm text-blue-600 hover:underline"
+              >
+                Clear filters
               </button>
-            </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((policy) => (
+            <PolicyCard
+              key={policy.id}
+              policy={policy}
+              onAcknowledge={handleAcknowledge}
+            />
           ))}
         </div>
       )}
 
-      {/* Policy Table */}
-      <Card title="Policy Documents">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm border-collapse rounded-lg overflow-hidden">
-            <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
-              <tr>
-                <th className="py-3 px-4 text-left">Policy Name</th>
-                <th className="py-3 px-4 text-left">Category</th>
-                <th className="py-3 px-4 text-center">Type</th>
-                <th className="py-3 px-4 text-center">Version</th>
-                <th className="py-3 px-4 text-center">Last Updated</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center">Read On</th>
-                <th className="py-3 px-4 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-14 text-center text-gray-400">
-                    <Search size={28} className="mx-auto mb-2 opacity-30" />
-                    <p className="text-sm">No policies match your filters.</p>
-                  </td>
-                </tr>
-              ) : paginated.map((p, i) => (
-                <tr
-                  key={p.id}
-                  className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50/40 transition cursor-pointer`}
-                  onClick={() => setSelected(p)}
-                >
-                  {/* Name */}
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      {!p.isRead && p.mandatory && (
-                        <AlertCircle size={14} className="text-red-500 shrink-0" />
-                      )}
-                      {!p.isRead && !p.mandatory && (
-                        <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                      )}
-                      {p.isRead && (
-                        <BadgeCheck size={14} className="text-emerald-500 shrink-0" />
-                      )}
-                      <span className={`font-medium ${!p.isRead ? "text-gray-900" : "text-gray-500"}`}>
-                        {p.title}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Category */}
-                  <td className="py-3 px-4">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-lg ${CAT_COLORS[p.category]}`}>
-                      {p.category}
-                    </span>
-                  </td>
-
-                  {/* Type */}
-                  <td className="py-3 px-4 text-center">
-                    {p.mandatory
-                      ? <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-50 text-red-600 border border-red-200">Mandatory</span>
-                      : <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">Optional</span>
-                    }
-                  </td>
-
-                  {/* Version */}
-                  <td className="py-3 px-4 text-center text-xs text-gray-400 font-mono">{p.version}</td>
-
-                  {/* Updated */}
-                  <td className="py-3 px-4 text-center text-xs text-gray-500">{p.updatedDate}</td>
-
-                  {/* Status */}
-                  <td className="py-3 px-4 text-center">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      p.isRead
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}>
-                      {p.isRead ? "Read" : "Unread"}
-                    </span>
-                  </td>
-
-                  {/* Read date */}
-                  <td className="py-3 px-4 text-center text-xs text-gray-400">
-                    {p.readDate || <span className="text-gray-300">—</span>}
-                  </td>
-
-                  {/* Action */}
-                  <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => setSelected(p)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg hover:bg-gray-100 transition text-gray-600"
-                      >
-                        <Eye size={12} /> View
-                      </button>
-                      {!p.isRead && (
-                        <button
-                          onClick={() => markRead(p.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition"
-                        >
-                          <CheckCircle2 size={12} /> Mark Read
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-4 text-sm">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition text-gray-600"
-          >
-            <ChevronLeft size={14} /> Previous
-          </button>
-          <span className="text-gray-500">Page {page} of {totalPages || 1}</span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages || totalPages === 0}
-            className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition text-gray-600"
-          >
-            Next <ChevronRight size={14} />
-          </button>
-        </div>
-      </Card>
-
-      {/* Policy Detail Modal */}
-      <PolicyModal
-        policy={selected}
-        onClose={() => setSelected(null)}
-        onMarkRead={id => { markRead(id); }}
-      />
+      <Toast msg={toast?.msg} type={toast?.type} />
     </div>
   );
 }
