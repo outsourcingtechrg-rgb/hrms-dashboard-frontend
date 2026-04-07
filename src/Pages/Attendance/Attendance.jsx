@@ -72,7 +72,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { API } from "../../Components/Apis";
-
+import MyAttendancePage from "./EmployeeAttendance";
 /* ─── Global styles ─── */
 const _STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap');
@@ -125,6 +125,14 @@ const _STYLES = `
 })();
 
 /* ─── JWT helper ─── */
+function getHeaders() {
+  const t = localStorage.getItem("access_token");
+  return {
+    "Content-Type": "application/json",
+    ...(t ? { Authorization: `Bearer ${t}` } : {}),
+  };
+}
+
 function getAuthFromToken() {
   try {
     const token = localStorage.getItem("access_token");
@@ -140,6 +148,16 @@ function getAuthFromToken() {
   } catch {
     return null;
   }
+}
+
+/* ─── Helper to extract employee full name ─── */
+function getEmployeeName(emp) {
+  if (!emp) return "Unknown";
+  if (emp.employee_name) return emp.employee_name;
+  if (emp.f_name || emp.l_name)
+    return `${emp.f_name || ""} ${emp.l_name || ""}`.trim();
+  if (emp.name) return emp.name;
+  return "Unknown";
 }
 
 /* ─── RBAC config ─── */
@@ -366,12 +384,12 @@ function EmployeeSidebar({ employee, records, loading, onClose }) {
               src={
                 employee.image || `https://i.pravatar.cc/150?u=${employee.id}`
               }
-              alt={employee.name}
+              alt={getEmployeeName(employee)}
               className="w-16 h-16 rounded-full object-cover ring-2 ring-white shadow shrink-0"
             />
             <div className="min-w-0">
               <p className="font-semibold text-gray-900 text-base leading-tight truncate">
-                {employee.name}
+                {getEmployeeName(employee)}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {employee.designation || "—"}
@@ -754,6 +772,7 @@ function RecordsTable({
   onRetry,
   onViewEmployee,
   month,
+  onViewEmployeePage,
   onMonthChange,
   role,
 }) {
@@ -1000,17 +1019,22 @@ function RecordsTable({
                   >
                     {/* Employee */}
                     <td className="py-3 px-3 pl-5 whitespace-nowrap">
-                      <div className="flex items-center gap-2.5">
+                      <div
+                        className="flex items-center gap-2.5"
+                        onClick={() =>
+                          onViewEmployeePage(r.employee_db_id || r.employee_id)
+                        }
+                      >
                         <img
                           src={
                             r.emp_image ||
                             `https://i.pravatar.cc/150?u=${r.employee_id}`
                           }
                           alt={r.emp_name}
-                          className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
+                          className="w-7 h-7 rounded-full object-cover border-2 border-white shadow-sm shrink-0 cursor-pointer"
                         />
                         <div>
-                          <p className="text-sm font-semibold text-gray-800 leading-tight">
+                          <p className="text-sm font-semibold text-gray-800 leading-tight cursor-pointer">
                             {r.emp_name}
                           </p>
                           <p className="text-[10px] text-gray-400 ea-mono">
@@ -1142,7 +1166,7 @@ export default function EmployeesAttendancePage() {
   const auth = useMemo(() => getAuthFromToken(), []);
   const role = useMemo(() => getRoleConfig(auth?.level ?? 99), [auth]);
   const RoleIcon = role.Icon;
-
+  const [attendanceViewEmpId, setAttendanceViewEmpId] = useState(null);
   const [month, setMonth] = useState(CURR_MONTH);
 
   /* Data */
@@ -1170,12 +1194,7 @@ export default function EmployeesAttendancePage() {
   const fetchEmployees = useCallback(async () => {
     setEmpLoad(true);
     try {
-      const token = localStorage.getItem("access_token");
-      const headers = {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-      const res = await fetch(API.GetAllEmployees, { headers });
+      const res = await fetch(API.GetAllEmployees, { headers: getHeaders() });
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       let list = Array.isArray(data) ? data : data.employees || [];
@@ -1199,12 +1218,7 @@ export default function EmployeesAttendancePage() {
   /* ── Fetch departments ── */
   const fetchDepts = useCallback(async () => {
     try {
-      const token = localStorage.getItem("access_token");
-      const headers = {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-      const res = await fetch(API.ListDepartment, { headers });
+      const res = await fetch(API.ListDepartment, { headers: getHeaders() });
       if (!res.ok) return;
       const data = await res.json();
       setDepts(Array.isArray(data) ? data : data.departments || []);
@@ -1218,11 +1232,6 @@ export default function EmployeesAttendancePage() {
     setRecLoad(true);
     setRecErr(null);
     try {
-      const token = localStorage.getItem("access_token");
-      const headers = {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
       /* Use admin/records endpoint — already enriched with employee info
          and already filtered to system employees only (no ZKT ghosts).
          For dept head: pass department_id so the server scopes it. */
@@ -1236,7 +1245,7 @@ export default function EmployeesAttendancePage() {
         params.set("department_id", String(auth.department_id));
       }
 
-      const res = await fetch(`${base}?${params}`, { headers });
+      const res = await fetch(`${base}?${params}`, { headers: getHeaders() });
       if (!res.ok) throw new Error(`Error ${res.status}`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : data.records || [];
@@ -1253,11 +1262,6 @@ export default function EmployeesAttendancePage() {
   const fetchSummary = useCallback(async () => {
     setSumLoad(true);
     try {
-      const token = localStorage.getItem("access_token");
-      const headers = {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
       const base =
         typeof API.AdminAttendanceSummary === "string"
           ? API.AdminAttendanceSummary
@@ -1268,7 +1272,7 @@ export default function EmployeesAttendancePage() {
         params.set("department_id", String(auth.department_id));
       }
 
-      const res = await fetch(`${base}?${params}`, { headers });
+      const res = await fetch(`${base}?${params}`, { headers: getHeaders() });
       if (!res.ok) throw new Error(res.status);
       setSummary(await res.json());
     } catch {
@@ -1353,6 +1357,15 @@ export default function EmployeesAttendancePage() {
     fetchRecords();
     fetchSummary();
   };
+
+  if (attendanceViewEmpId) {
+    return (
+      <MyAttendancePage
+        employeeId={attendanceViewEmpId}
+        onBack={() => setAttendanceViewEmpId(null)}
+      />
+    );
+  }
 
   return (
     <div
@@ -1470,7 +1483,8 @@ export default function EmployeesAttendancePage() {
         loading={recLoad}
         error={recErr}
         onRetry={fetchRecords}
-        onViewEmployee={openSidebar}
+        onViewEmployee={openSidebar} // eye button → sidebar (unchanged)
+        onViewEmployeePage={setAttendanceViewEmpId} // name click → full page (new)
         month={month}
         onMonthChange={setMonth}
         externalDeptFilter={chartDeptFilter}

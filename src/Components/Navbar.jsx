@@ -69,7 +69,7 @@ export default function Navbar({ setIsOpen, onLogout }) {
     const token = localStorage.getItem("access_token");
     const employeeDbId = auth?.EPI ?? auth?.employee_id ?? auth?.id ?? auth?.sub;
     if (!token || !employeeDbId) return;
-
+ 
     let ignore = false;
 
     async function loadCurrentUser() {

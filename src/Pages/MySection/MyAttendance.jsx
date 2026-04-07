@@ -61,11 +61,21 @@ const _STYLES = `
   }
 })();
 
-/* ═══════════════════════════════════════════════════════════
-   ✅ FIX 1 — JWT helper now actually RETURNS the resolved id
-   Old code computed `raw` but then returned `payload.id`
-   directly, ignoring EPI / employee_id completely.
-═══════════════════════════════════════════════════════════ */
+
+
+function decodeAuthToken() {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) return null;
+    const payload = token.split(".")[1];
+    const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+
 /* ─── JWT helper ─── */
 function getEmployeeIdFromToken() {
 try {
@@ -82,7 +92,7 @@ const payload = JSON.parse(atob(base64));
 const raw =
 payload.EPI ??
 payload.employee_id ??
-payload.sub ?? // fallback only
+payload.sub ?? 
 payload.id ??
 null;
 
@@ -90,8 +100,8 @@ return payload.id;
 } catch {
 return null;
 }
-}
-
+} 
+ 
 /* ─── Time helpers ─── */
 
 /** "HH:MM" or "HH:MM:SS" → 12-hour string */
@@ -127,13 +137,6 @@ function fmtShiftTotal(s) {
   return mins != null ? fmtHours(mins / 60) : null;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   ✅ FIX 2 — Shift period detection boundaries corrected
-   Old:  night  = mins >= 22*60  → missed 18:00-21:59
-   New:  night  = mins >= 18*60  (18:00 – 03:59)
-         day    = mins >= 04*60  (04:00 – 11:59)
-         afternoon = 12:00 – 17:59
-═══════════════════════════════════════════════════════════ */
 function shiftPeriod(startTime) {
   const mins = toMins(startTime);
   if (mins === null) return "day";
@@ -161,11 +164,16 @@ function isOvernightShift(shift) {
 
 /* ─── Status display config ─── */
 const STATUS_CFG = {
-  Present: { badge: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500", cal: "bg-emerald-400 text-white" },
+  Present: { badge: "bg-emerald-100 text-emerald-600", dot: "bg-emerald-500", cal: "bg-emerald-300 text-white" },
   Late:    { badge: "bg-yellow-100 text-yellow-800",   dot: "bg-yellow-400",  cal: "bg-yellow-400 text-white"  },
-  Early:    { badge: "bg-yellow-100 text-yellow-800",   dot: "bg-yellow-400",  cal: "bg-yellow-400 text-white"  },
+  Early:    { badge: "bg-blue-100 text-yellow-800",   dot: "bg-blue-400",  cal: "bg-blue-400 text-white"  },
   Absent:  { badge: "bg-red-100 text-red-700",         dot: "bg-red-500",     cal: "bg-red-400 text-white"     },
   Leave:   { badge: "bg-slate-100 text-slate-600",     dot: "bg-slate-400",   cal: "bg-slate-400 text-white"   },
+ "Late & Early": {
+  badge: "bg-gradient-to-r from-yellow-400 to-blue-500 text-white",
+  dot: "bg-slate-400",
+  cal: "bg-gradient-to-r from-yellow-400 to-blue-500 text-white"
+},
 };
 
 /* ─── Month options ─── */
@@ -223,6 +231,8 @@ function ShiftBanner({ shift, loading }) {
   const meta      = PERIOD_META[period];
   const ShiftIcon = meta.Icon;
   const overnight = isOvernightShift(shift);
+
+
 
   return (
     <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border mb-5 ${meta.bg}`}>
@@ -400,6 +410,7 @@ function SummarySection({ summary, loading, error, onRetry }) {
   const stats = [
     { key: "Present", val: summary?.present, total: summary?.total_days, bar: "bg-emerald-500", badge: "border-emerald-200 bg-emerald-50 text-emerald-700", Icon: CheckCircle2 },
     { key: "Late",    val: summary?.late,    total: summary?.total_days, bar: "bg-yellow-400",  badge: "border-yellow-200 bg-yellow-50 text-yellow-700",   Icon: Clock        },
+     { key: "Early",   val: summary?.early,   total: summary?.total_days, bar: "bg-blue-400",    badge: "border-blue-200 bg-blue-50 text-blue-700",         Icon: LogOut       },
     { key: "Absent",  val: summary?.absent,  total: summary?.total_days, bar: "bg-red-400",     badge: "border-red-200 bg-red-50 text-red-700",            Icon: XCircle      },
     { key: "Leave",   val: summary?.leave,   total: summary?.total_days, bar: "bg-slate-400",   badge: "border-slate-200 bg-slate-50 text-slate-600",      Icon: Calendar     },
   ];
@@ -407,7 +418,7 @@ function SummarySection({ summary, loading, error, onRetry }) {
   if (error && !loading) return <div className="mb-5"><ErrMsg msg={error} onRetry={onRetry} /></div>;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
       {stats.map(({ key, val, total, bar, badge, Icon }) => {
         const pct = total && val != null ? Math.round((val / total) * 100) : 0;
         return (
@@ -740,9 +751,12 @@ function RecordsTable({ records, loading, error, onRetry, month, onMonthChange, 
      5. Fetches /me/summary → aggregates
 ═══════════════════════════════════════════════════════════ */
 export default function MyAttendancePage() {
-  const employeeId = useMemo(() => getEmployeeIdFromToken(), []);
-  const [month, setMonth] = useState(CURR_MONTH);
 
+
+  // const employeeId = useMemo(() => getEmployeeIdFromToken(), []);
+  const employeeDBId = useMemo(() => getEmployeeIdFromToken(), []);
+  const [month, setMonth] = useState(CURR_MONTH);
+  
   const [shift,     setShift]     = useState(null);
   const [shiftLoad, setShiftLoad] = useState(true);
 
@@ -758,6 +772,96 @@ export default function MyAttendancePage() {
   const [recLoad,   setRecLoad]   = useState(true);
   const [recErr,    setRecErr]    = useState(null);
 
+  
+  const auth = useMemo(() => decodeAuthToken(), []);
+const fallbackUser = useMemo(() => buildFallbackUser(auth), [auth]);
+const [user, setUser] = useState(fallbackUser);
+
+function buildFallbackUser(auth) {
+  const fullName =
+    auth?.name ||
+    auth?.full_name ||
+    [auth?.f_name, auth?.l_name].filter(Boolean).join(" ") ||
+    auth?.username ||
+    "Current User";
+  const email = auth?.email || auth?.user_email || "No email available";
+  const level = Number(auth?.level ?? auth?.role_level ?? 0);
+  // const role = ROLE_LABELS[level] || (level ? `Level ${level}` : "Active User");
+  const employeeCode = auth?.employee_id || auth?.id || auth?.sub || "N/A";
+  const employeeDbId = auth?.EPI ?? auth?.employee_id ?? auth?.id ?? auth?.sub ?? null;
+  const initials =
+    fullName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "CU";
+
+  return {
+    fullName,
+    email,
+    // role,
+    employeeCode,
+    employeeDbId,
+    image: "",
+    initials,
+  };
+}
+
+ useEffect(() => {
+    const token = localStorage.getItem("access_token");
+    const employeeDbId = auth?.EPI ?? auth?.employee_id ?? auth?.id ?? auth?.sub;
+    if (!token || !employeeDbId) return;
+ 
+    let ignore = false;
+
+    async function loadCurrentUser() {
+      try {
+        const res = await fetch(API.employeeDetails(employeeDbId), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (!res.ok) throw new Error(`Error ${res.status}`);
+
+        const employee = await res.json();
+        if (ignore) return;
+
+        const fullName =
+          [employee?.f_name, employee?.l_name].filter(Boolean).join(" ") ||
+          employee?.name ||
+          fallbackUser.fullName;
+
+        setUser((prev) => ({
+          ...prev,
+          fullName,
+          email: employee?.email || prev.email,
+          image: employee?.image || "",
+          employeeCode: employee?.employee_id || employee?.id || prev.employeeCode,
+          employeeDbId: employee?.id || prev.employeeDbId,
+          initials:
+            fullName
+              .split(" ")
+              .filter(Boolean)
+              .slice(0, 2)
+              .map((part) => part[0]?.toUpperCase())
+              .join("") || prev.initials,
+        }));
+      } catch {
+        // Keep token-based fallback values if profile fetch fails.
+      }
+    }
+
+    loadCurrentUser();
+    return () => {
+      ignore = true;
+    };
+  }, [auth?.EPI, auth?.employee_id, auth?.id, auth?.sub, fallbackUser.fullName]);
+
+
+
+  const employeeId = user.employeeCode;
   /* ── Fetch shift (display only — banner & expected times) ── */
   const loadShift = useCallback(async () => {
     if (!employeeId) { setShiftLoad(false); return; }
@@ -844,7 +948,7 @@ export default function MyAttendancePage() {
         <div className="flex items-center gap-3 self-start">
           {employeeId && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-500 shadow-sm">
-              <User size={12} className="text-gray-400" /> Employee #{employeeId}
+              <User size={12} className="text-gray-400" /> Employee #{employeeDBId}
             </div>
           )}
           <button onClick={refreshAll} disabled={!employeeId}
@@ -867,18 +971,20 @@ export default function MyAttendancePage() {
           onRetry={loadToday}
         />
       </div>
-
+          <div className="lg:grid-cols-2">
+          
       <SummarySection
         summary={summary}
         loading={sumLoad}
         error={sumErr}
         onRetry={loadSummary}
       />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-1">
           <CalHeatmap records={records} month={month} />
         </div>
+          </div>
+
         <div className="lg:col-span-2">
           <RecordsTable
             records={records}
