@@ -29,6 +29,10 @@ import Shifts from "./Pages/Shifts/Shifts";
 import AttendanceSync from "./Pages/AttendanceSync/AttendanceSync";
 import ResetPassword from "./Pages/Login/ResetPassword";
 
+// hod pages
+import HodAttendance from "./Pages/Attendance/AttendanceHOD";
+import HodEmployees from "./Pages/employee_mangmant/EmployeesHod";
+
 // My Pages
 import MyNotices from "./Pages/MySection/MyNotices";
 import MyApplications from "./Pages/MySection/myApplications";
@@ -165,8 +169,16 @@ function AppContent() {
           <Route
             path="/employees"
             element={
-              <ProtectedRoute minLevel={6}>
+              <ProtectedRoute minLevel={4}>
                 <Employees />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/hod-employees"
+            element={
+              <ProtectedRoute minLevel={6}>
+                <HodEmployees />
               </ProtectedRoute>
             }
           />
@@ -201,7 +213,7 @@ function AppContent() {
           <Route
             path="/attendance"
             element={
-              <ProtectedRoute minLevel={7}>
+              <ProtectedRoute minLevel={4}>
                 <Attendance />
               </ProtectedRoute>
             }
@@ -210,8 +222,24 @@ function AppContent() {
           <Route
             path="/attendance/employee/:employeeId"
             element={
-              <ProtectedRoute minLevel={6}>
+              <ProtectedRoute minLevel={4}>
                 <EmployeeAttendanceDetails />
+              </ProtectedRoute>
+            }
+          />
+            <Route
+             path="/hod-attendance"
+             element={
+               <ProtectedRoute minLevel={6}>
+                 <HodAttendance />
+               </ProtectedRoute>
+             }
+           />
+           <Route
+            path="/hod-attendance/employee/:employeeId"
+            element={
+              <ProtectedRoute minLevel={6}>
+                <HodAttendance />
               </ProtectedRoute>
             }
           />
@@ -228,7 +256,7 @@ function AppContent() {
           <Route path="/applications" element={<Applications />} />
           <Route path="/policy" element={<Policy />} />
           <Route path="/notice" element={<Notice />} />
-          <Route path="/kpi" element={<KPI />} />
+          <Route path="/kpi" element={<ComingSoon />} />
 
           <Route path="/reports" element={<ComingSoon />} />
           <Route path="/training" element={<ComingSoon />} />

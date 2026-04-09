@@ -57,7 +57,7 @@ function buildFallbackUser(auth) {
     initials,
   };
 }
-
+ 
 export default function Navbar({ setIsOpen, onLogout }) {
   const navigate = useNavigate();
   const auth = React.useMemo(() => decodeAuthToken(), []);

@@ -150,10 +150,10 @@ const roleSidebarMap = {
   6: [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
-      { label: "Attendance", icon: Clock, path: "/attendance", my: false },
+      // { label: "Attendance", icon: Clock, path: "/attendance", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
-      { label: "departments", icon: House, path: "/departments", my: false },
-      { label: "Employees", icon: Users, path: "/employees", my: false },
+      { label: "Attendance", icon: House, path: "/hod-attendance", my: false },
+      { label: "Employees", icon: Users, path: "/hod-employees", my: false },
       { label: "Reports", icon: FileText, path: "/reports", my: false },
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },
       { label: "KPI", icon: LetterText, path: "/kpi", my: false },

@@ -1178,7 +1178,7 @@ export default function HRDashboard() {
       {/* ══ Row 3 — 90-day Heatmap + Policy compliance ══ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         {/* Heatmap */}
-        <div className="hr-card p-5 lg:col-span-2 hr-fade-up">
+        <div className="hr-card p-5 lg:col-span-1 hr-fade-up">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-bold text-gray-700">
               Organisation Attendance — Last 90 Days

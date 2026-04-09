@@ -55,11 +55,44 @@ DeleteApplication:   (id) => `${mainOrigin}/applications/${id}`,
   DeleteAttendnaceSync: (deviceId) => `${mainOrigin}/attendance/sync/${deviceId}`, //linked
   UpdateAttendanceSync: (deviceId) => `${mainOrigin}/attendance/sync/${deviceId}`, //linked
 
+
+  // admin Attendance records 
+  
+GetAttendanceAdmin: ({
+  month,
+  employee_id,
+  department_id,
+  status,
+  skip = 0,
+  limit = 200,
+} = {}) => {
+  const params = new URLSearchParams();
+
+  if (month)         params.append("month", month);
+  if (employee_id)   params.append("employee_id", employee_id);
+  if (department_id) params.append("department_id", department_id);
+  if (status)        params.append("status", status);
+
+  params.append("skip", skip);
+  params.append("limit", limit);
+
+  return `${mainOrigin}/attendance/admin/records?${params.toString()}`;
+},
+
+GetAttendanceAdminSummary: (month, department_id) => {
+  const params = new URLSearchParams();
+
+  params.append("month", month);
+
+  if (department_id) {
+    params.append("department_id", department_id);
+  }
+
+  return `${mainOrigin}/attendance/admin/summary?${params.toString()}`;
+},
 // MY
+
 // my attendance
-  // // myAttendance: `${mainOrigin}/attendance/me`,
-  // myAttendance: `${mainOrigin}/attendance/me/today`,
-  // myAttendance: `${mainOrigin}/attendance/me/summary`,
   MyAttendance        : `${mainOrigin}/attendance/me`,
   MyAttendanceByMonth : (empId, month) => `${mainOrigin}/attendance/me?employee_id=${empId}&month=${month}`,
   MyAttendanceToday   : (empId) => `${mainOrigin}/attendance/me/today?employee_id=${empId}`,
