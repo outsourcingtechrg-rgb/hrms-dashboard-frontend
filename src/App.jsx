@@ -41,6 +41,7 @@ import MyPolicy from "./Pages/MySection/MyPolicies";
 import MyAttendance from "./Pages/MySection/MyAttendance";
 
 import ComingSoon from "./Pages/CommingSoon/CommingSoon";
+import LeaveManagement from "./Pages/LeaveManagment/LeaveManagement";
 
 function AppContent() {
   const [ui, setUI] = useState(null);
@@ -257,6 +258,7 @@ function AppContent() {
           <Route path="/policy" element={<Policy />} />
           <Route path="/notice" element={<Notice />} />
           <Route path="/kpi" element={<ComingSoon />} />
+          <Route path="/leave-managment" element={<LeaveManagement />} />
 
           <Route path="/reports" element={<ComingSoon />} />
           <Route path="/training" element={<ComingSoon />} />

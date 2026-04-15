@@ -73,6 +73,7 @@ const MY_SECTION = [
   { label: "My Notices", icon: FileText, path: "/my-notices", my: true },
   { label: "My Training", icon: GraduationCap, path: "/my-training", my: true },
   { label: "My Policies", icon: Shield, path: "/my-policies", my: true },
+  { label: "Leave Management", icon: Calendar, path: "/leave-managment", my: true },
 ];
 /* =========================
    SIDEBAR MAP
@@ -136,6 +137,7 @@ const roleSidebarMap = {
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },
       { label: "KPI", icon: LetterText, path: "/kpi", my: false },
       { label: "Policy", icon: Shield, path: "/policy", my: false },
+      { label: "Leave Management", icon: Calendar, path: "/leave-managment", my: false },
         // my section
       ...MY_SECTION
   ],
@@ -170,6 +172,7 @@ const roleSidebarMap = {
   // Employee
   8: [
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
+    { label: "Leave Management", icon: Calendar, path: "/leave-managment", my: false },
         // my section
       ...MY_SECTION
   ],

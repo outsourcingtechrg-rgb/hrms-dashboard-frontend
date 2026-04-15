@@ -57,7 +57,7 @@ DeleteApplication:   (id) => `${mainOrigin}/applications/${id}`,
 
 
   // admin Attendance records 
-  
+
 GetAttendanceAdmin: ({
   month,
   employee_id,
@@ -226,5 +226,42 @@ GetAttendanceAdminSummary: (month, department_id) => {
  
   /** POST /notices/{id}/acknowledge */
   AcknowledgeNotice: (id) => `${mainOrigin}/notices/${id}/acknowledge`,
+
+  // ── Leave Management ───────────────────────────────────────────────
+
+  // HR — Leave Cycles
+  LeaveCycles:            `${mainOrigin}/leaves/cycles`,
+  LeaveCycleById:         (id) => `${mainOrigin}/leaves/cycles/${id}`,
+  DeactivateLeaveCycle:   (id) => `${mainOrigin}/leaves/cycles/${id}/deactivate`,
+  LeaveTypesByCycle:      (id) => `${mainOrigin}/leaves/cycles/${id}/types`,
+
+  // HR — Leave Types
+  LeaveTypes:             `${mainOrigin}/leaves/types`,
+  LeaveTypeById:          (id) => `${mainOrigin}/leaves/types/${id}`,
+
+  // HR — Balance Allocation
+  AllocateLeave:          `${mainOrigin}/leaves/allocate`,
+  AdjustCarryForward:     `${mainOrigin}/leaves/adjust-carry-forward`,
+
+  // Employee — Apply & View
+  ApplyLeave:             `${mainOrigin}/leaves/apply`,
+  MyLeaves:               `${mainOrigin}/leaves/my`,
+  MyLeaveBalance:         `${mainOrigin}/leaves/balance`,
+  MyLeaveBalanceByType:   (leaveTypeId) => `${mainOrigin}/leaves/balance/${leaveTypeId}`,
+  CancelLeave:            (id) => `${mainOrigin}/leaves/${id}/cancel`,
+
+  // Manager — Approvals
+  PendingLeaves:          `${mainOrigin}/leaves/pending`,
+  LeaveAction:            (id) => `${mainOrigin}/leaves/${id}/action`,
+
+  // Admin — Employee Data
+  EmployeeLeaves:         (empId) => `${mainOrigin}/leaves/employee/${empId}`,
+  EmployeeLeaveBalance:   (empId) => `${mainOrigin}/leaves/employee/${empId}/balance`,
+  EmployeeLeaveSummary:   (empId) => `${mainOrigin}/leaves/employee/${empId}/summary`,
+
+  // Admin — Reports
+  LeaveStatsByStatus:     `${mainOrigin}/leaves/stats/by-status`,
+  LeaveStatsByDept:       (deptId) => `${mainOrigin}/leaves/stats/department/${deptId}`,
+
 
 };
