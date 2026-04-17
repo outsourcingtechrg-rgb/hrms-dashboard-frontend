@@ -237,7 +237,7 @@ function ErrMsg({ msg, onRetry }) {
         <p className="text-xs font-semibold text-red-700">
           Could not load data
         </p>
-        <p className="text-xs text-red-400 mt-0.5 break-words">{msg}</p>
+        <p className="text-xs text-red-400 mt-0.5 wrap-break-word">{msg}</p>
       </div>
       {onRetry && (
         <button
@@ -319,14 +319,84 @@ function ShiftBanner({ shift, loading }) {
 }
 
 /* ─────────────────────────────────────────
-   Today Card
-   ─────────────────────────────────────────
-   ✅ FIX 3 — Check In / Out no longer flipped.
-   Backend returns in_time = actual punch-in time,
-   out_time = actual punch-out time (may be next day
-   for overnight). We just display them as-is.
-   No client-side reassignment of in/out.
+   Checkout Countdown Timer
 ───────────────────────────────────────── */
+function CountdownToCheckout({ rec, shift }) {
+  const [remaining, setRemaining] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!rec?.in_time || !shift?.total_hours) {
+      setRemaining(null);
+      return;
+    }
+
+    function updateCountdown() {
+      const now = new Date();
+      const currentHours = now.getHours();
+      const currentMins = now.getMinutes();
+      const currentTotalMins = currentHours * 60 + currentMins;
+
+      // Parse check-in time
+      const [inHStr, inMStr] = String(rec.in_time).split(":");
+      const inTotalMins = parseInt(inHStr, 10) * 60 + parseInt(inMStr, 10);
+
+      // Calculate expected work duration in minutes
+      const [shiftHStr, shiftMStr] = String(shift.total_hours).split(":");
+      const expectedDurationMins =
+        parseInt(shiftHStr, 10) * 60 + parseInt(shiftMStr, 10);
+
+      // Calculate when they should checkout (check-in + expected duration)
+      let checkoutTargetMins = inTotalMins + expectedDurationMins;
+
+      // If checkout time goes past midnight, wrap it
+      if (checkoutTargetMins >= 24 * 60) {
+        checkoutTargetMins -= 24 * 60;
+      }
+
+      let diffMins = checkoutTargetMins - currentTotalMins;
+
+      // If negative, they should have checked out (going to next day checkout)
+      if (diffMins < 0) {
+        diffMins += 24 * 60;
+      }
+
+      if (diffMins <= 0) {
+        setRemaining(null);
+      } else {
+        const hours = Math.floor(diffMins / 60);
+        const mins = diffMins % 60;
+        setRemaining({ hours, mins, totalMins: diffMins });
+      }
+    }
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 10000); // Update every 10 seconds
+    return () => clearInterval(interval);
+  }, [rec, shift]);
+
+  if (!remaining) return null;
+
+  return (
+    <div className="flex items-center gap-3 bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-4 py-3 mb-4">
+      <div className="flex items-center gap-2">
+        <Clock size={16} className="text-blue-600 animate-pulse" />
+        <div>
+          <p className="text-xs uppercase tracking-widest font-semibold text-blue-600 leading-none mb-1">
+            Until Checkout
+          </p>
+          <p className="text-lg font-bold text-gray-900 tabular-nums">
+            {remaining.hours}h {remaining.mins}m
+          </p>
+        </div>
+      </div>
+      {remaining.totalMins <= 60 && (
+        <span className="ml-auto text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-100 text-red-700 animate-pulse">
+          Approaching
+        </span>
+      )}
+    </div>
+  );
+}
 function TodayCard({ rec, shift, loading, error, onRetry }) {
   const cfg = rec ? STATUS_CFG[rec.status] : null;
   const dayFmt = new Date().toLocaleDateString("default", {
@@ -386,6 +456,11 @@ function TodayCard({ rec, shift, loading, error, onRetry }) {
             Checking today's record…
           </span>
         </div>
+      )}
+
+      {/* Countdown to checkout (only show if checked in and not yet checked out) */}
+      {!loading && !error && rec && !rec.out_time && (
+        <CountdownToCheckout rec={rec} shift={shift} />
       )}
 
       {/* Error */}
@@ -499,7 +574,7 @@ function TodayCard({ rec, shift, loading, error, onRetry }) {
 /* ─────────────────────────────────────────
    Summary Section
 ───────────────────────────────────────── */
-function SummarySection({ summary, loading, error, onRetry }) {
+function RateCard({ summary, loading }) {
   const rate = summary?.rate ?? 0;
   const rateColor =
     rate >= 90
@@ -511,6 +586,64 @@ function SummarySection({ summary, loading, error, onRetry }) {
     rate >= 90 ? "bg-emerald-500" : rate >= 75 ? "bg-amber-400" : "bg-red-500";
   const rateLabel =
     rate >= 90 ? "Excellent" : rate >= 75 ? "Good" : "Needs Attention";
+
+  return (
+    <Card className="p-5 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm text-gray-500 font-medium">Rate</span>
+        <TrendingUp size={14} className="text-gray-300" />
+      </div>
+      {loading ? (
+        <Loader2 size={18} className="att-spin text-blue-400" />
+      ) : (
+        <>
+          <div className="flex items-end gap-2 mb-2">
+            <span className={`text-3xl font-bold ${rateColor}`}>{rate}%</span>
+            <span className={`text-xs font-semibold mb-0.5 ${rateColor}`}>
+              {rateLabel}
+            </span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+            <div
+              className={`h-2 rounded-full transition-all ${rateBar}`}
+              style={{ width: `${rate}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-gray-300 mt-1">
+            <span>0%</span>
+            <span>Target 90%</span>
+            <span>100%</span>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function SummarySection({ summary, loading, error, onRetry, records }) {
+  const rate = summary?.rate ?? 0;
+  const rateColor =
+    rate >= 90
+      ? "text-emerald-600"
+      : rate >= 75
+        ? "text-amber-500"
+        : "text-red-500";
+  const rateBar =
+    rate >= 90 ? "bg-emerald-500" : rate >= 75 ? "bg-amber-400" : "bg-red-500";
+  const rateLabel =
+    rate >= 90 ? "Excellent" : rate >= 75 ? "Good" : "Needs Attention";
+
+  // Calculate monthly hours from records
+  const monthlyHours = useMemo(() => {
+    return records.reduce((total, r) => total + (r.hours || 0), 0);
+  }, [records]);
+
+  // Calculate expected monthly hours based on working days and shift duration
+  const expectedMonthlyHours = useMemo(() => {
+    if (!summary?.total_days) return 0;
+    // Assume standard 8-hour workday
+    return summary.total_days * 8;
+  }, [summary]);
 
   const stats = [
     {
@@ -563,7 +696,7 @@ function SummarySection({ summary, loading, error, onRetry }) {
     );
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
+    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
       {stats.map(({ key, val, total, bar, badge, Icon }) => {
         const pct = total && val != null ? Math.round((val / total) * 100) : 0;
         return (
@@ -601,33 +734,78 @@ function SummarySection({ summary, loading, error, onRetry }) {
         );
       })}
 
-      {/* Rate card */}
-      <Card className="p-5 flex flex-col col-span-2 lg:col-span-1">
+      {/* Monthly Hours Card */}
+      <Card className="p-5 flex flex-col col-span-1">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-500 font-medium">Rate</span>
-          <TrendingUp size={14} className="text-gray-300" />
+          <span className="text-sm text-gray-500 font-medium">
+            Monthly Hours
+          </span>
+          <Timer size={14} className="text-gray-300" />
         </div>
         {loading ? (
           <Loader2 size={18} className="att-spin text-blue-400" />
         ) : (
           <>
-            <div className="flex items-end gap-2 mb-2">
-              <span className={`text-3xl font-bold ${rateColor}`}>{rate}%</span>
-              <span className={`text-xs font-semibold mb-0.5 ${rateColor}`}>
-                {rateLabel}
-              </span>
+            {/* Hours completed vs expected */}
+            <div className="mb-3">
+              <div className="flex items-baseline gap-1 mb-1">
+                <span
+                  className={`text-3xl font-bold tabular-nums ${
+                    monthlyHours < expectedMonthlyHours
+                      ? "text-red-600"
+                      : "text-blue-600"
+                  }`}
+                >
+                  {fmtHours(monthlyHours)}
+                </span>
+                <span className="text-xs text-gray-400 font-medium">
+                  / {fmtHours(expectedMonthlyHours)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-400 mb-2">
+                {expectedMonthlyHours > 0
+                  ? `${Math.round((monthlyHours / expectedMonthlyHours) * 100)}% complete`
+                  : "No target set"}
+              </p>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-2 rounded-full transition-all ${rateBar}`}
-                style={{ width: `${rate}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-[10px] text-gray-300 mt-1">
-              <span>0%</span>
-              <span>Target 90%</span>
-              <span>100%</span>
-            </div>
+
+            {/* Progress bar */}
+            {expectedMonthlyHours > 0 && (
+              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${
+                    monthlyHours < expectedMonthlyHours
+                      ? "bg-red-500"
+                      : "bg-emerald-500"
+                  }`}
+                  style={{
+                    width: `${Math.min(
+                      (monthlyHours / expectedMonthlyHours) * 100,
+                      100,
+                    )}%`,
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Status */}
+            {monthlyHours < expectedMonthlyHours && (
+              <div className="flex items-center gap-2 mt-3 px-2.5 py-1.5 bg-red-50 rounded-lg border border-red-100">
+                <AlertCircle size={12} className="text-red-600 shrink-0" />
+                <span className="text-xs font-semibold text-red-700">
+                  {fmtHours(expectedMonthlyHours - monthlyHours)} remaining
+                </span>
+              </div>
+            )}
+
+            {monthlyHours >= expectedMonthlyHours && (
+              <div className="flex items-center gap-2 mt-3 px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
+                <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
+                <span className="text-xs font-semibold text-emerald-700">
+                  Target completed ✓
+                </span>
+              </div>
+            )}
           </>
         )}
       </Card>
@@ -668,20 +846,17 @@ function CalHeatmap({ records, month }) {
     return `${base} ${isToday ? "ring-2 ring-offset-1 ring-blue-500" : ""}`;
   }
 
-
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-500">Monthly Heatmap</h3>
         <div className="flex items-center gap-3 flex-wrap">
-          {[
-            ["Present", "bg-emerald-400"],
+          {[ ["Present", "bg-emerald-400"],
             ["Late", "bg-yellow-400"],
             ["Ealrly", "bg-blue-400"],
             ["Absent", "bg-red-400"],
             ["Leave", "bg-slate-400"],
-            ["Late & Early", "bg-gradient-to-r from-yellow-400 to-blue-500 text-white" ]
-          ].map(([l, c]) => (
+            ["Late & Early", "bg-gradient-to-r from-yellow-400 to-blue-500 text-white" ]].map(([l, c]) => (
             <div key={l} className="flex items-center gap-1">
               <span className={`w-2.5 h-2.5 rounded-sm ${c}`} />
               <span className="text-[10px] text-gray-400">{l}</span>
@@ -690,22 +865,17 @@ function CalHeatmap({ records, month }) {
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-1">
-
+        {DAY_HDR.map(l => <div key={l} className="text-[10px] font-semibold text-center text-gray-400 py-0.5">{l}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: firstDay }, (_, i) => (
-          <div key={`e${i}`} />
-        ))}
+        {Array.from({ length: firstDay }, (_, i) => <div key={`e${i}`} />)}
         {Array.from({ length: daysInMo }, (_, i) => {
-          const d = i + 1;
+          const d    = i + 1;
           const date = `${yr}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          const st = map[date];
+          const st   = map[date];
           return (
-            <div
-              key={d}
-              title={st ? `${date}: ${st}` : date}
-              className={`aspect-square flex items-center justify-center rounded-lg text-[11px] font-semibold cursor-default select-none transition ${cellCls(d)}`}
-            >
+            <div key={d} title={st ? `${date}: ${st}` : date}
+              className={`aspect-square flex items-center justify-center rounded-lg text-[11px] font-semibold cursor-default select-none transition ${cellCls(d)}`}>
               {d}
             </div>
           );
@@ -762,7 +932,7 @@ function RecordsTable({
     <Card className="p-6">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <h3 className="text-sm font-medium text-gray-500 flex-1 min-w-[80px]">
+        <h3 className="text-sm font-medium text-gray-500 flex-1 min-w-20">
           Records{" "}
           {!loading && (
             <span className="text-gray-400 font-normal">
@@ -1201,29 +1371,43 @@ export default function MyAttendancePage() {
         />
       </div>
 
+
+ <div className="grid grid-cols-3 gap-4">
+  
+  {/* LEFT SIDE (2/3 width) */}
+  <div className="lg:col-span-2 md:grid-cols-2 gap-5">
+    
+
       <SummarySection
         summary={summary}
         loading={sumLoad}
         error={sumErr}
         onRetry={loadSummary}
+        records={records}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-1">
-          <CalHeatmap records={records} month={month} />
-        </div>
-        <div className="lg:col-span-2">
-          <RecordsTable
-            records={records}
-            loading={recLoad}
-            error={recErr}
-            onRetry={loadRecords}
-            month={month}
-            onMonthChange={setMonth}
-            shift={shift}
-          />
-        </div>
-      </div>
+
+
+  </div>
+    <div>
+      <CalHeatmap records={records} month={month} />
+    </div>
+
+
+</div>
+<div className="my-2">
+    <RateCard summary={summary} loading={sumLoad} />
+</div>
+
+      <RecordsTable
+        records={records}
+        loading={recLoad}
+        error={recErr}
+        onRetry={loadRecords}
+        month={month}
+        onMonthChange={setMonth}
+        shift={shift}
+      />
     </div>
   );
 }
