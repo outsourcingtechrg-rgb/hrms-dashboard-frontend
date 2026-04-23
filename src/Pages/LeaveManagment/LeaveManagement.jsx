@@ -193,7 +193,7 @@ function getAuth() {
     return { id: Number(idRaw), name: p.name ?? p.full_name ?? p.username ?? "User", level: Number(level) };
   } catch { return { id: 1, name: "User", level: 5 }; }
 }
-
+console.log(getAuth())
 /* ─── API base ─── */
 function getHeaders() {
   const token = localStorage.getItem("access_token");
@@ -1292,12 +1292,12 @@ export default function LeaveManagement() {
   const auth = useMemo(() => getAuth(), []);
 
   /* Level mapping:
-     1=SuperAdmin, 2=CEO, 3=HRAdmin, 4=HR, 5=Employee, 6=HOD/Manager */
+     1=SuperAdmin, 2=CEO, 3=HRAdmin, 4=HR, 5=finance, 6=HOD 7=lead, 8=Employee, 9=intern, */
   const isEmployee = true;                       // everyone can see employee tab
   const isManager  = auth && auth.level <= 6;    // 1-6
   const isHR       = auth && auth.level <= 4;    // 1-4
   const isAdmin    = auth && auth.level <= 3;    // 1-3
-
+    console.log(auth)
   const tabs = [
     { key: "employee", label: "My Leaves",  Icon: Calendar,  show: true        },
     { key: "manager",  label: "Approvals",  Icon: CheckCircle, show: isManager  },

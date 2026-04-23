@@ -104,10 +104,13 @@ function to12(rawTime) {
 /** "HH:MM" or "HH:MM:SS" → total minutes from midnight */
 function toMins(t) {
   if (!t) return null;
-  const [hStr, mStr] = String(t).split(":");
-  const h = parseInt(hStr, 10),
-    m = parseInt(mStr, 10);
-  return isNaN(h) || isNaN(m) ? null : h * 60 + m;
+  const parts = String(t).split(":");
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  const s = parts[2] ? parseInt(parts[2], 10) : 0;
+
+  if (isNaN(h) || isNaN(m)) return null;
+  return h * 60 + m + s / 60;
 }
 
 /** decimal hours → "Xh Ym" */
@@ -124,13 +127,6 @@ function fmtShiftTotal(s) {
   return mins != null ? fmtHours(mins / 60) : null;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   ✅ FIX 2 — Shift period detection boundaries corrected
-   Old:  night  = mins >= 22*60  → missed 18:00-21:59
-   New:  night  = mins >= 18*60  (18:00 – 03:59)
-         day    = mins >= 04*60  (04:00 – 11:59)
-         afternoon = 12:00 – 17:59
-═══════════════════════════════════════════════════════════ */
 function shiftPeriod(startTime) {
   const mins = toMins(startTime);
   if (mins === null) return "day";
@@ -331,7 +327,11 @@ function CountdownToCheckout({ rec, shift }) {
     }
 
     function updateCountdown() {
-      const now = new Date();
+      const nowPKT = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Karachi",
+      });
+
+      const now = new Date(nowPKT);
       const currentHours = now.getHours();
       const currentMins = now.getMinutes();
       const currentTotalMins = currentHours * 60 + currentMins;
@@ -620,7 +620,7 @@ function RateCard({ summary, loading }) {
   );
 }
 
-function SummarySection({ summary, loading, error, onRetry, records }) {
+function SummarySection({ summary, loading, error, onRetry, records, shift }) {
   const rate = summary?.rate ?? 0;
   const rateColor =
     rate >= 90
@@ -633,17 +633,45 @@ function SummarySection({ summary, loading, error, onRetry, records }) {
   const rateLabel =
     rate >= 90 ? "Excellent" : rate >= 75 ? "Good" : "Needs Attention";
 
-  // Calculate monthly hours from records
+  // Calculate monthly hours from records (excluding weekends)
   const monthlyHours = useMemo(() => {
-    return records.reduce((total, r) => total + (r.hours || 0), 0);
+    return records.reduce((total, r) => {
+      if (!r.date || !r.hours) return total;
+      // Check if it's a weekend (0 = Sunday, 6 = Saturday)
+      const dow = new Date(r.date + "T12:00:00").getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      // Only count weekday hours
+      return isWeekend ? total : total + r.hours;
+    }, 0);
   }, [records]);
 
-  // Calculate expected monthly hours based on working days and shift duration
+  // Calculate expected monthly hours based on working days (excluding weekends)
   const expectedMonthlyHours = useMemo(() => {
-    if (!summary?.total_days) return 0;
-    // Assume standard 8-hour workday
-    return summary.total_days * 8;
-  }, [summary]);
+    if (!summary?.total_days && records.length === 0) return 0;
+
+    // Get daily hours from shift.total_hours (HH:MM:SS format)
+    let dailyHours = 9; // default fallback
+    if (shift?.total_hours) {
+      const mins = toMins(shift.total_hours);
+      dailyHours = mins ? mins / 60 : 9;
+    } else if (summary?.shift_duration) {
+      const [hStr, mStr] = String(summary.shift_duration).split(":");
+      const h = parseInt(hStr, 10);
+      const m = parseInt(mStr, 10);
+      dailyHours = h + m / 60;
+    }
+
+    // Count working days (Monday-Friday) from records
+    // This includes ALL days in the selected month, whether it's current or past
+    const workingDays = records.reduce((count, r) => {
+      if (!r.date) return count;
+      const dow = new Date(r.date + "T12:00:00").getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      return isWeekend ? count : count + 1;
+    }, 0);
+
+    return workingDays > 0 ? workingDays * dailyHours : summary.total_days * 8;
+  }, [summary, records, shift]);
 
   const stats = [
     {
@@ -740,7 +768,7 @@ function SummarySection({ summary, loading, error, onRetry, records }) {
           <span className="text-sm text-gray-500 font-medium">
             Monthly Hours
           </span>
-          <Timer size={14} className="text-gray-300" />
+          <Timer size={14} className="text-gray-400" />
         </div>
         {loading ? (
           <Loader2 size={18} className="att-spin text-blue-400" />
@@ -851,12 +879,17 @@ function CalHeatmap({ records, month }) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-medium text-gray-500">Monthly Heatmap</h3>
         <div className="flex items-center gap-3 flex-wrap">
-          {[ ["Present", "bg-emerald-400"],
+          {[
+            ["Present", "bg-emerald-400"],
             ["Late", "bg-yellow-400"],
             ["Ealrly", "bg-blue-400"],
             ["Absent", "bg-red-400"],
             ["Leave", "bg-slate-400"],
-            ["Late & Early", "bg-gradient-to-r from-yellow-400 to-blue-500 text-white" ]].map(([l, c]) => (
+            [
+              "Late & Early",
+              "bg-gradient-to-r from-yellow-400 to-blue-500 text-white",
+            ],
+          ].map(([l, c]) => (
             <div key={l} className="flex items-center gap-1">
               <span className={`w-2.5 h-2.5 rounded-sm ${c}`} />
               <span className="text-[10px] text-gray-400">{l}</span>
@@ -865,17 +898,29 @@ function CalHeatmap({ records, month }) {
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-1">
-        {DAY_HDR.map(l => <div key={l} className="text-[10px] font-semibold text-center text-gray-400 py-0.5">{l}</div>)}
+        {DAY_HDR.map((l) => (
+          <div
+            key={l}
+            className="text-[10px] font-semibold text-center text-gray-400 py-0.5"
+          >
+            {l}
+          </div>
+        ))}
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: firstDay }, (_, i) => <div key={`e${i}`} />)}
+        {Array.from({ length: firstDay }, (_, i) => (
+          <div key={`e${i}`} />
+        ))}
         {Array.from({ length: daysInMo }, (_, i) => {
-          const d    = i + 1;
+          const d = i + 1;
           const date = `${yr}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-          const st   = map[date];
+          const st = map[date];
           return (
-            <div key={d} title={st ? `${date}: ${st}` : date}
-              className={`aspect-square flex items-center justify-center rounded-lg text-[11px] font-semibold cursor-default select-none transition ${cellCls(d)}`}>
+            <div
+              key={d}
+              title={st ? `${date}: ${st}` : date}
+              className={`aspect-square flex items-center justify-center rounded-lg text-[11px] font-semibold cursor-default select-none transition ${cellCls(d)}`}
+            >
               {d}
             </div>
           );
@@ -885,14 +930,8 @@ function CalHeatmap({ records, month }) {
   );
 }
 
-/* ─────────────────────────────────────────
-   Records Table
-   ─────────────────────────────────────────
-   ✅ FIX 3 (continued) — in_time and out_time
-   displayed exactly as received from backend.
-   Overnight badge shown when out_time < in_time
-   in clock-minutes (meaning checkout crossed midnight).
-───────────────────────────────────────── */
+//  Records Table
+
 const PAGE_SIZE = 10;
 
 function RecordsTable({
@@ -1371,33 +1410,25 @@ export default function MyAttendancePage() {
         />
       </div>
 
-
- <div className="grid grid-cols-3 gap-4">
-  
-  {/* LEFT SIDE (2/3 width) */}
-  <div className="lg:col-span-2 md:grid-cols-2 gap-5">
-    
-
-      <SummarySection
-        summary={summary}
-        loading={sumLoad}
-        error={sumErr}
-        onRetry={loadSummary}
-        records={records}
-      />
-
-
-
-  </div>
-    <div>
-      <CalHeatmap records={records} month={month} />
-    </div>
-
-
-</div>
-<div className="my-2">
-    <RateCard summary={summary} loading={sumLoad} />
-</div>
+      <div className="grid grid-cols-3 gap-4">
+        {/* LEFT SIDE (2/3 width) */}
+        <div className="lg:col-span-2 md:grid-cols-2 gap-5">
+          <SummarySection
+            summary={summary}
+            loading={sumLoad}
+            error={sumErr}
+            onRetry={loadSummary}
+            records={records}
+            shift={shift}
+          />
+        </div>
+        <div>
+          <CalHeatmap records={records} month={month} />
+        </div>
+      </div>
+      <div className="my-2">
+        <RateCard summary={summary} loading={sumLoad} />
+      </div>
 
       <RecordsTable
         records={records}

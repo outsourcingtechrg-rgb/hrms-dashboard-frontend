@@ -1,224 +1,326 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  FileText, CheckCircle2, Clock, XCircle, PlusCircle,
-  ChevronLeft, ChevronRight, Search, X, Plane,
-  DollarSign, Calendar, Building2, ChevronDown, AlertCircle,
-  Send, Trash2
+  CalendarDays, Plus, X, Loader2, Info, ChevronDown,
+  Clock, CheckCircle2, XCircle, Ban, FileText,
+  Download, Paperclip, AlertTriangle, RefreshCw,
 } from "lucide-react";
+import { API } from "../../Components/Apis";
 
-/* ─── Shared components ─── */
-function IconBadge({ icon: Icon, color }) {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const token = () => localStorage.getItem("access_token") || "";
+const authHeaders = () => ({ Authorization: `Bearer ${token()}` });
+const jsonHeaders = () => ({ ...authHeaders(), "Content-Type": "application/json" });
+
+const apiFetch = async (url, opts = {}) => {
+  const res = await fetch(url, { headers: jsonHeaders(), ...opts });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Request failed");
+  }
+  return res.json();
+};
+
+// ── Authenticated file download ───────────────────────────────────────────────
+// <a href> cannot send Authorization headers, so we fetch the blob manually,
+// create an object URL, click it programmatically, then revoke it.
+async function downloadWithAuth(url, filename) {
+  const res = await fetch(url, { headers: authHeaders() });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Download failed");
+  }
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename || "attachment";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+}
+
+const fmt = (d) =>
+  d
+    ? new Date(d).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : "-";
+
+// ─── Status config ────────────────────────────────────────────────────────────
+const STATUS_CFG = {
+  PENDING:   { label: "Pending",   dot: "bg-amber-400",   text: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200",   icon: Clock        },
+  APPROVED:  { label: "Approved",  dot: "bg-emerald-400", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", icon: CheckCircle2 },
+  REJECTED:  { label: "Rejected",  dot: "bg-red-400",     text: "text-red-700",     bg: "bg-red-50",     border: "border-red-200",     icon: XCircle      },
+  CANCELLED: { label: "Cancelled", dot: "bg-gray-400",    text: "text-gray-500",    bg: "bg-gray-50",    border: "border-gray-200",    icon: Ban          },
+};
+
+const TYPE_COLORS = [
+  { icon: "bg-blue-100 text-blue-600"     },
+  { icon: "bg-rose-100 text-rose-600"     },
+  { icon: "bg-violet-100 text-violet-600" },
+  { icon: "bg-emerald-100 text-emerald-600" },
+  { icon: "bg-amber-100 text-amber-600"   },
+  { icon: "bg-cyan-100 text-cyan-600"     },
+];
+
+// ─── Badge ────────────────────────────────────────────────────────────────────
+function StatusBadge({ status }) {
+  const c = STATUS_CFG[status] || STATUS_CFG.PENDING;
+  const Icon = c.icon;
   return (
-    <span className={`inline-flex items-center justify-center w-9 h-9 rounded-xl border ${color}`}>
-      <Icon className="w-5 h-5" />
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${c.text} ${c.bg} ${c.border}`}>
+      <Icon size={11} />
+      {c.label}
     </span>
   );
 }
-function Widget({ title, value, sub, icon, color }) {
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function Toast({ toasts }) {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm flex gap-4 items-center">
-      <IconBadge icon={icon} color={color} />
-      <div>
-        <p className="text-sm text-gray-400">{title}</p>
-        <h3 className="text-2xl font-semibold text-gray-900">{value}</h3>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-function Card({ title, children, action }) {
-  return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-medium text-gray-500">{title}</h2>
-        {action}
-      </div>
-      {children}
+    <div className="fixed top-5 right-5 z-[200] flex flex-col gap-2 pointer-events-none">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg text-sm font-medium text-white
+            ${t.type === "success" ? "bg-emerald-500" : "bg-red-500"}`}
+        >
+          {t.type === "success" ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
+          {t.msg}
+        </div>
+      ))}
     </div>
   );
 }
 
-/* ─── Config ─── */
-const TYPE_CONFIG = {
-  Leave:         { icon: Calendar,    color: "bg-violet-50 text-violet-700", border: "border-violet-200" },
-  Travel:        { icon: Plane,       color: "bg-blue-50 text-blue-700",     border: "border-blue-200"   },
-  Reimbursement: { icon: DollarSign,  color: "bg-amber-50 text-amber-700",   border: "border-amber-200"  },
-  WFH:           { icon: Building2,   color: "bg-cyan-50 text-cyan-700",     border: "border-cyan-200"   },
-  Overtime:      { icon: Clock,       color: "bg-orange-50 text-orange-700", border: "border-orange-200" },
-};
+// ─── Apply Modal ──────────────────────────────────────────────────────────────
+function ApplyModal({ leaveTypes, onClose, onSuccess, addToast }) {
+  const [form, setForm] = useState({
+    leave_type_id: "",
+    start_date: "",
+    end_date: "",
+    employee_note: "",
+  });
+  const [errors, setErrors]   = useState({});
+  const [saving, setSaving]   = useState(false);
+  const [files, setFiles]     = useState([]);
+  const fileInputRef           = React.useRef(null);
 
-const STATUS_CONFIG = {
-  Pending:  { badge: "bg-yellow-100 text-yellow-800 border border-yellow-200", dot: "bg-yellow-400", icon: Clock       },
-  Approved: { badge: "bg-green-100 text-green-800 border border-green-200",   dot: "bg-green-500",  icon: CheckCircle2 },
-  Rejected: { badge: "bg-red-100 text-red-700 border border-red-200",         dot: "bg-red-500",    icon: XCircle      },
-};
+  const selectedType = leaveTypes.find((t) => String(t.id) === String(form.leave_type_id));
+  const requiresDoc  = selectedType?.requires_document ?? false;
+  const allowedExts  = selectedType?.allowed_file_types || "pdf,jpg,png,doc,docx";
 
-const LEAVE_TYPES   = ["Annual Leave", "Sick Leave", "Emergency Leave", "Unpaid Leave", "Maternity/Paternity Leave"];
-const TRAVEL_TYPES  = ["Local Travel", "International Travel", "Client Visit"];
-const REIMB_TYPES   = ["Meals", "Transport", "Accommodation", "Equipment", "Training"];
-const OVERTIME_TYPES = ["Weekday Overtime", "Weekend Overtime", "Holiday Overtime"];
+  const set = (k, v) => {
+    setForm((p) => ({ ...p, [k]: v }));
+    setErrors((p) => ({ ...p, [k]: "" }));
+  };
 
-const INITIAL_APPLICATIONS = [
-  { id: 3001, type: "Leave",         subType: "Annual Leave",      status: "Approved",  fromDate: "2026-02-10", toDate: "2026-02-12", submittedDate: "2026-02-01", reason: "Family vacation",             approvedBy: "Line Manager",  rejectedBy: null,      rejectedReason: null,                        amount: null  },
-  { id: 3002, type: "Reimbursement", subType: "Meals",             status: "Approved",  fromDate: "2026-02-15", toDate: "2026-02-15", submittedDate: "2026-02-16", reason: "Client lunch meeting",        approvedBy: "Finance Dept",  rejectedBy: null,      rejectedReason: null,                        amount: 450   },
-  { id: 3003, type: "Travel",        subType: "Client Visit",      status: "Approved",  fromDate: "2026-02-18", toDate: "2026-02-19", submittedDate: "2026-02-10", reason: "Quarterly client review",     approvedBy: "Line Manager",  rejectedBy: null,      rejectedReason: null,                        amount: null  },
-  { id: 3004, type: "Leave",         subType: "Sick Leave",        status: "Pending",   fromDate: "2026-03-08", toDate: "2026-03-09", submittedDate: "2026-03-05", reason: "Not feeling well",            approvedBy: null,            rejectedBy: null,      rejectedReason: null,                        amount: null  },
-  { id: 3005, type: "Reimbursement", subType: "Transport",         status: "Pending",   fromDate: "2026-03-03", toDate: "2026-03-03", submittedDate: "2026-03-04", reason: "Cab to client site",          approvedBy: null,            rejectedBy: null,      rejectedReason: null,                        amount: 120   },
-  { id: 3006, type: "WFH",           subType: "WFH",               status: "Pending",   fromDate: "2026-03-10", toDate: "2026-03-11", submittedDate: "2026-03-05", reason: "Home maintenance scheduled",  approvedBy: null,            rejectedBy: null,      rejectedReason: null,                        amount: null  },
-  { id: 3007, type: "Leave",         subType: "Annual Leave",      status: "Rejected",  fromDate: "2026-01-25", toDate: "2026-01-28", submittedDate: "2026-01-15", reason: "Personal travel abroad",      approvedBy: null,            rejectedBy: "HR Dept", rejectedReason: "Insufficient leave balance",amount: null  },
-  { id: 3008, type: "Overtime",      subType: "Weekend Overtime",  status: "Approved",  fromDate: "2026-02-22", toDate: "2026-02-22", submittedDate: "2026-02-20", reason: "Project delivery deadline",   approvedBy: "Line Manager",  rejectedBy: null,      rejectedReason: null,                        amount: null  },
-  { id: 3009, type: "Reimbursement", subType: "Equipment",         status: "Rejected",  fromDate: "2026-02-05", toDate: "2026-02-05", submittedDate: "2026-02-06", reason: "Keyboard replacement",        approvedBy: null,            rejectedBy: "Finance", rejectedReason: "Exceeds single-item limit", amount: 890   },
-  { id: 3010, type: "Travel",        subType: "International Travel", status: "Pending", fromDate: "2026-03-20", toDate: "2026-03-23", submittedDate: "2026-03-04", reason: "Tech conference – Dubai",    approvedBy: null,            rejectedBy: null,      rejectedReason: null,                        amount: null  },
-  { id: 3011, type: "Leave",         subType: "Emergency Leave",   status: "Approved",  fromDate: "2026-01-08", toDate: "2026-01-08", submittedDate: "2026-01-07", reason: "Family emergency",            approvedBy: "HR Dept",       rejectedBy: null,      rejectedReason: null,                        amount: null  },
-  { id: 3012, type: "WFH",           subType: "WFH",               status: "Approved",  fromDate: "2026-02-03", toDate: "2026-02-04", submittedDate: "2026-01-31", reason: "Focus work for sprint",       approvedBy: "Line Manager",  rejectedBy: null,      rejectedReason: null,                        amount: null  },
-];
+  const addFiles = (incoming) => {
+    const arr = Array.from(incoming);
+    setFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name + f.size));
+      return [...prev, ...arr.filter((f) => !existing.has(f.name + f.size))];
+    });
+    setErrors((p) => ({ ...p, files: "" }));
+  };
 
-function getDays(from, to) {
-  const d = Math.ceil((new Date(to) - new Date(from)) / 86400000) + 1;
-  return d <= 0 ? 1 : d;
-}
-
-/* ─── New Application Modal ─── */
-function NewApplicationModal({ onClose, onSubmit }) {
-  const [type, setType]         = useState("Leave");
-  const [subType, setSubType]   = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate]     = useState("");
-  const [reason, setReason]     = useState("");
-  const [amount, setAmount]     = useState("");
-  const [errors, setErrors]     = useState({});
-
-  const subTypes = type === "Leave" ? LEAVE_TYPES : type === "Travel" ? TRAVEL_TYPES : type === "Reimbursement" ? REIMB_TYPES : type === "Overtime" ? OVERTIME_TYPES : ["WFH"];
+  const removeFile = (idx) => setFiles((p) => p.filter((_, i) => i !== idx));
 
   const validate = () => {
     const e = {};
-    if (!subType)   e.subType  = "Please select a sub-type";
-    if (!fromDate)  e.fromDate = "Required";
-    if (!toDate)    e.toDate   = "Required";
-    if (!reason.trim()) e.reason = "Please provide a reason";
-    if (type === "Reimbursement" && !amount) e.amount = "Required";
+    if (!form.leave_type_id) e.leave_type_id = "Select a leave type";
+    if (!form.start_date)    e.start_date    = "Start date is required";
+    if (!form.end_date)      e.end_date      = "End date is required";
+    if (form.start_date && form.end_date && form.end_date < form.start_date)
+      e.end_date = "End date must be after start date";
+    if (requiresDoc && files.length === 0)
+      e.files = "This leave type requires at least one supporting document";
     return e;
   };
 
-  const handleSubmit = () => {
+  const submit = async () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
-    onSubmit({ type, subType, fromDate, toDate, reason, amount: amount ? parseFloat(amount) : null });
-    onClose();
+    setSaving(true);
+    try {
+      // Step 1 — create the application
+      const created = await apiFetch(API.ApplyLeave(), {
+        method: "POST",
+        body: JSON.stringify({
+          leave_type_id: Number(form.leave_type_id),
+          start_date:    form.start_date,
+          end_date:      form.end_date,
+          employee_note: form.employee_note || undefined,
+        }),
+      });
+
+      // Step 2 — upload attachments (sequential so errors are attributable)
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(API.UploadAttachment(created.id), {
+          method:  "POST",
+          headers: authHeaders(),   // no Content-Type – browser sets multipart boundary
+          body:    fd,
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new Error(err.detail || `Upload failed: ${file.name}`);
+        }
+      }
+
+      addToast("Leave application submitted!", "success");
+      onSuccess();
+    } catch (err) {
+      addToast(err.message, "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const TypeIcon = TYPE_CONFIG[type]?.icon || FileText;
+  const inp =
+    "w-full border rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition";
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden max-h-[92vh] flex flex-col">
-
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${TYPE_CONFIG[type]?.color}`}>
-              <TypeIcon size={15} />
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center">
+              <CalendarDays size={16} className="text-white" />
             </div>
-            <span className="font-semibold text-gray-900 text-sm">New Application</span>
+            <div>
+              <h2 className="font-bold text-gray-900 text-sm">Apply for Leave</h2>
+              <p className="text-xs text-gray-400">Submit a new leave request</p>
+            </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition">
+          <button onClick={onClose} disabled={saving}
+            className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition disabled:opacity-50">
             <X size={15} />
           </button>
         </div>
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-
-          {/* Type selector — pill tabs */}
+          {/* Leave Type */}
           <div>
-            <label className="text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-2 block">Application Type</label>
-            <div className="flex flex-wrap gap-2">
-              {Object.keys(TYPE_CONFIG).map(t => {
-                const Icon = TYPE_CONFIG[t].icon;
-                const active = type === t;
-                return (
-                  <button key={t} onClick={() => { setType(t); setSubType(""); setErrors({}); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition
-                      ${active ? `${TYPE_CONFIG[t].color} ${TYPE_CONFIG[t].border} shadow-sm` : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"}`}>
-                    <Icon size={12} /> {t}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Sub-type */}
-          <div>
-            <label className="text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5 block">Sub-Type</label>
-            <select value={subType} onChange={e => { setSubType(e.target.value); setErrors(p => ({ ...p, subType: "" })); }}
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 transition cursor-pointer
-                ${errors.subType ? "border-red-300" : "border-gray-200"}`}>
-              <option value="">Select sub-type…</option>
-              {subTypes.map(s => <option key={s}>{s}</option>)}
+            <label className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-1.5 block">Leave Type *</label>
+            <select value={form.leave_type_id} onChange={(e) => set("leave_type_id", e.target.value)}
+              className={`${inp} ${errors.leave_type_id ? "border-red-300" : "border-gray-200"}`}>
+              <option value="">Select leave type…</option>
+              {leaveTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}{t.is_paid ? "" : " (Unpaid)"}
+                </option>
+              ))}
             </select>
-            {errors.subType && <p className="text-xs text-red-500 mt-1">{errors.subType}</p>}
+            {errors.leave_type_id && <p className="text-xs text-red-500 mt-1">{errors.leave_type_id}</p>}
           </div>
 
-          {/* Date range */}
+          {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "From Date", val: fromDate, set: setFromDate, key: "fromDate" },
-              { label: "To Date",   val: toDate,   set: setToDate,   key: "toDate"   },
-            ].map(({ label, val, set, key }) => (
-              <div key={key}>
-                <label className="text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5 block">{label}</label>
-                <input type="date" value={val} onChange={e => { set(e.target.value); setErrors(p => ({ ...p, [key]: "" })); }}
-                  className={`w-full border rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 transition
-                    ${errors[key] ? "border-red-300" : "border-gray-200"}`} />
-                {errors[key] && <p className="text-xs text-red-500 mt-1">{errors[key]}</p>}
-              </div>
-            ))}
+            <div>
+              <label className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-1.5 block">Start Date *</label>
+              <input type="date" value={form.start_date}
+                onChange={(e) => set("start_date", e.target.value)}
+                className={`${inp} ${errors.start_date ? "border-red-300" : "border-gray-200"}`} />
+              {errors.start_date && <p className="text-xs text-red-500 mt-1">{errors.start_date}</p>}
+            </div>
+            <div>
+              <label className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-1.5 block">End Date *</label>
+              <input type="date" min={form.start_date || undefined} value={form.end_date}
+                onChange={(e) => set("end_date", e.target.value)}
+                className={`${inp} ${errors.end_date ? "border-red-300" : "border-gray-200"}`} />
+              {errors.end_date && <p className="text-xs text-red-500 mt-1">{errors.end_date}</p>}
+            </div>
           </div>
 
-          {/* Duration preview */}
-          {fromDate && toDate && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm text-blue-700">
-              <Calendar size={13} />
-              <span className="font-medium">{getDays(fromDate, toDate)} day{getDays(fromDate, toDate) !== 1 ? "s" : ""}</span>
-              <span className="text-blue-400">·</span>
-              <span>{fromDate} → {toDate}</span>
-            </div>
-          )}
-
-          {/* Amount (reimbursement only) */}
-          {type === "Reimbursement" && (
-            <div>
-              <label className="text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5 block">Amount (SAR)</label>
-              <div className="relative">
-                <DollarSign size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                <input type="number" min="0" value={amount} onChange={e => { setAmount(e.target.value); setErrors(p => ({ ...p, amount: "" })); }}
-                  placeholder="0.00"
-                  className={`w-full border rounded-xl pl-8 pr-3 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 transition
-                    ${errors.amount ? "border-red-300" : "border-gray-200"}`} />
-              </div>
-              {errors.amount && <p className="text-xs text-red-500 mt-1">{errors.amount}</p>}
-            </div>
-          )}
-
-          {/* Reason */}
+          {/* Note */}
           <div>
-            <label className="text-[11px] uppercase tracking-widest font-semibold text-gray-400 mb-1.5 block">Reason</label>
-            <textarea rows={3} value={reason} onChange={e => { setReason(e.target.value); setErrors(p => ({ ...p, reason: "" })); }}
-              placeholder="Briefly describe the reason for this application…"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm bg-gray-50 outline-none focus:border-gray-400 resize-none transition
-                ${errors.reason ? "border-red-300" : "border-gray-200"}`} />
-            {errors.reason && <p className="text-xs text-red-500 mt-1">{errors.reason}</p>}
+            <label className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-1.5 block">Note (optional)</label>
+            <textarea rows={3} value={form.employee_note}
+              onChange={(e) => set("employee_note", e.target.value)}
+              placeholder="Any additional context for HR…"
+              className={`${inp} border-gray-200 resize-none leading-relaxed`} />
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <label className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-1.5 flex items-center gap-1.5">
+              Attachments
+              {requiresDoc && <span className="text-red-500">*</span>}
+              {requiresDoc && (
+                <span className="normal-case font-normal text-gray-400">(required for this leave type)</span>
+              )}
+            </label>
+
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+              className={`border-2 border-dashed rounded-xl px-4 py-5 flex flex-col items-center gap-2 cursor-pointer transition
+                ${errors.files
+                  ? "border-red-300 bg-red-50"
+                  : "border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50"}`}
+            >
+              <Paperclip size={20} className={errors.files ? "text-red-400" : "text-gray-400"} />
+              <p className="text-sm text-gray-500">
+                <span className="font-semibold text-blue-600">Click to upload</span> or drag & drop
+              </p>
+              <p className="text-xs text-gray-400">Allowed: {allowedExts}</p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              accept={allowedExts.split(",").map((e) => `.${e.trim()}`).join(",")}
+              onChange={(e) => addFiles(e.target.files)}
+            />
+            {errors.files && <p className="text-xs text-red-500 mt-1">{errors.files}</p>}
+
+            {files.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                {files.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText size={13} className="text-blue-500 flex-shrink-0" />
+                      <span className="text-xs text-gray-700 truncate">{f.name}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">({(f.size / 1024).toFixed(0)} KB)</span>
+                    </div>
+                    <button onClick={() => removeFile(i)}
+                      className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-500 transition flex-shrink-0 ml-2">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+            <Info size={13} className="text-blue-500 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              Your request will be reviewed by HR. You'll receive a notification once a decision is made.
+            </p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
-          <button onClick={handleSubmit}
-            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition flex items-center justify-center gap-2">
-            <Send size={14} /> Submit Application
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3 bg-gray-50">
+          <button onClick={submit} disabled={saving}
+            className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-bold rounded-xl transition flex items-center justify-center gap-2">
+            {saving
+              ? <><Loader2 size={13} className="animate-spin" /> Submitting…</>
+              : <><CalendarDays size={13} /> Submit Request</>}
           </button>
-          <button onClick={onClose}
-            className="py-2.5 px-5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition">
+          <button onClick={onClose} disabled={saving}
+            className="py-2.5 px-5 border border-gray-200 text-gray-600 hover:bg-white text-sm font-medium rounded-xl transition disabled:opacity-50">
             Cancel
           </button>
         </div>
@@ -227,348 +329,358 @@ function NewApplicationModal({ onClose, onSubmit }) {
   );
 }
 
-/* ─── Detail Modal ─── */
-function DetailModal({ app, onClose, onCancel }) {
-  if (!app) return null;
-  const stCfg = STATUS_CONFIG[app.status];
-  const typeCfg = TYPE_CONFIG[app.type];
-  const TypeIcon = typeCfg?.icon || FileText;
-  const StatusIcon = stCfg?.icon || Clock;
+// ─── Detail Drawer ────────────────────────────────────────────────────────────
+function DetailDrawer({ appId, onClose, onCancel, addToast }) {
+  const [app, setApp]             = useState(null);
+  const [atts, setAtts]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+  const [downloading, setDownloading] = useState(null); // attachment id being downloaded
+
+  useEffect(() => {
+    if (!appId) return;
+    setLoading(true);
+    Promise.all([
+      apiFetch(API.ApplicationById(appId)),
+      apiFetch(API.GetApplicationAttachments(appId)),
+    ])
+      .then(([a, at]) => { setApp(a); setAtts(at); })
+      .catch((e) => addToast(e.message, "error"))
+      .finally(() => setLoading(false));
+  }, [appId]);
+
+  const cancel = async () => {
+    if (!confirm("Cancel this leave application?")) return;
+    setCancelling(true);
+    try {
+      await apiFetch(API.CancelApplication(appId), { method: "POST" });
+      addToast("Application cancelled", "success");
+      onCancel();
+    } catch (e) {
+      addToast(e.message, "error");
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Authenticated download — fetches blob with Bearer token, triggers save-as dialog
+  const handleDownload = async (att) => {
+    setDownloading(att.id);
+    try {
+      await downloadWithAuth(API.DownloadAttachment(att.id), att.file_name);
+    } catch (e) {
+      addToast(e.message, "error");
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg mx-0 sm:mx-4 max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex-1 pr-4">
-            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <span className={`text-xs font-medium px-2.5 py-1 rounded-lg ${typeCfg?.color}`}>{app.type}</span>
-              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${stCfg?.badge}`}>{app.status}</span>
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-gray-50 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-slate-700 flex items-center justify-center">
+              <FileText size={16} className="text-white" />
             </div>
-            <h2 className="text-base font-semibold text-gray-900">{app.subType}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Application #{app.id}</p>
+            <div>
+              <h2 className="font-bold text-gray-900 text-sm">Application Details</h2>
+              <p className="text-xs text-gray-400">#{appId}</p>
+            </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition shrink-0">
+          <button onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition">
             <X size={15} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: "From Date",  value: app.fromDate },
-              { label: "To Date",    value: app.toDate },
-              { label: "Duration",   value: `${getDays(app.fromDate, app.toDate)} day${getDays(app.fromDate, app.toDate) !== 1 ? "s" : ""}` },
-              { label: "Submitted",  value: app.submittedDate },
-              ...(app.amount ? [{ label: "Amount", value: `SAR ${app.amount}` }] : []),
-              ...(app.approvedBy ? [{ label: "Approved By", value: app.approvedBy }] : []),
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-gray-50 rounded-xl p-3">
-                <div className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1">{label}</div>
-                <div className="text-sm font-medium text-gray-800">{value}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-blue-500" />
+            </div>
+          ) : app ? (
+            <div className="space-y-5">
+              {/* Status + cancel */}
+              <div className="flex items-center justify-between">
+                <StatusBadge status={app.status} />
+                {app.status === "PENDING" && (
+                  <button onClick={cancel} disabled={cancelling}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-red-50 border border-red-200 text-red-600 text-xs font-semibold rounded-xl hover:bg-red-100 transition disabled:opacity-50">
+                    {cancelling ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+                    Cancel Request
+                  </button>
+                )}
               </div>
-            ))}
-          </div>
 
-          <div className="bg-gray-50 rounded-xl p-3">
-            <div className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 mb-1">Reason</div>
-            <p className="text-sm text-gray-700 leading-relaxed">{app.reason}</p>
-          </div>
+              {/* Info grid */}
+              <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                {[
+                  ["Leave Type", app.leave_type?.name || "-"],
+                  ["Duration",   `${fmt(app.start_date)} – ${fmt(app.end_date)}`],
+                  ["Days",       `${app.requested_days} day${app.requested_days !== 1 ? "s" : ""}`],
+                  ["Applied On", fmt(app.requested_at)],
+                  ...(app.reviewed_at ? [["Reviewed On", fmt(app.reviewed_at)]] : []),
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between">
+                    <span className="text-xs text-gray-400 font-medium">{k}</span>
+                    <span className="text-sm font-semibold text-gray-800">{v}</span>
+                  </div>
+                ))}
+              </div>
 
-          {app.status === "Rejected" && (
-            <div className="bg-red-50 border-l-4 border-red-400 rounded-xl p-4">
-              <div className="text-[10px] uppercase tracking-widest font-semibold text-red-400 mb-1.5">Rejection Details</div>
-              <p className="text-sm text-red-800"><span className="font-medium">By:</span> {app.rejectedBy}</p>
-              <p className="text-sm text-red-800 mt-1"><span className="font-medium">Reason:</span> {app.rejectedReason}</p>
+              {/* Notes */}
+              {app.employee_note && (
+                <div>
+                  <p className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-2">Your Note</p>
+                  <p className="text-sm text-gray-600 bg-gray-50 rounded-xl p-3 leading-relaxed">{app.employee_note}</p>
+                </div>
+              )}
+              {app.hr_note && (
+                <div>
+                  <p className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-2">HR Note</p>
+                  <p className="text-sm text-gray-600 bg-amber-50 border border-amber-100 rounded-xl p-3 leading-relaxed">{app.hr_note}</p>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {atts.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-widest font-bold text-gray-400 mb-2">
+                    Attachments ({atts.length})
+                  </p>
+                  <div className="space-y-2">
+                    {atts.map((a) => (
+                      <div key={a.id}
+                        className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Paperclip size={13} className="text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">{a.file_name}</span>
+                          {a.file_size && (
+                            <span className="text-xs text-gray-400 flex-shrink-0">
+                              ({(a.file_size / 1024).toFixed(0)} KB)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* ── Authenticated download button ── */}
+                        <button
+                          onClick={() => handleDownload(a)}
+                          disabled={downloading === a.id}
+                          className="flex items-center gap-1 text-blue-600 text-xs font-semibold hover:underline ml-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                          {downloading === a.id
+                            ? <Loader2 size={11} className="animate-spin" />
+                            : <Download size={11} />}
+                          {downloading === a.id ? "Downloading…" : "Download"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-
-          {app.status === "Pending" && (
-            <div className="flex items-center gap-2.5 bg-yellow-50 border border-yellow-100 rounded-xl px-4 py-3">
-              <Clock size={15} className="text-yellow-500 shrink-0" />
-              <p className="text-sm text-yellow-800">This application is awaiting approval from your manager.</p>
-            </div>
-          )}
-
-          {app.status === "Approved" && (
-            <div className="flex items-center gap-2.5 bg-green-50 border border-green-100 rounded-xl px-4 py-3">
-              <CheckCircle2 size={15} className="text-green-600 shrink-0" />
-              <p className="text-sm text-green-800">Approved by <span className="font-semibold">{app.approvedBy}</span>.</p>
-            </div>
-          )}
+          ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* Footer */}
-        <div className="px-6 pb-6 flex gap-3">
-          {app.status === "Pending" && (
-            <button onClick={() => { onCancel(app.id); onClose(); }}
-              className="flex items-center gap-1.5 px-4 py-2.5 border border-red-300 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl transition">
-              <Trash2 size={13} /> Withdraw
-            </button>
-          )}
-          <button onClick={onClose}
-            className="flex-1 py-2.5 border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-xl transition">
-            Close
+// ─── My Leaves Page ───────────────────────────────────────────────────────────
+export default function MyLeaves() {
+  const [summary, setSummary]       = useState(null);
+  const [apps, setApps]             = useState([]);
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [filter, setFilter]         = useState("All");
+  const [loading, setLoading]       = useState(true);
+  const [showApply, setShowApply]   = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [toasts, setToasts]         = useState([]);
+
+  const addToast = useCallback((msg, type = "success") => {
+    const id = Date.now();
+    setToasts((p) => [...p, { id, msg, type }]);
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 3500);
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [sumData, appsData, typesData] = await Promise.all([
+        apiFetch(API.GetMySummary()),
+        apiFetch(API.GetMyApplications()),
+        apiFetch(API.GetAllTypes()),
+      ]);
+      setSummary(sumData);
+      setApps(appsData);
+      setLeaveTypes(typesData);
+    } catch (e) {
+      addToast(e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered =
+    filter === "All" ? apps : apps.filter((a) => a.status === filter);
+
+  const totalBalance =
+    summary?.summaries?.reduce(
+      (s, x) => (x.total_allocated > 0 ? s + x.remaining : s),
+      0
+    ) ?? 0;
+
+  if (loading)
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-blue-500" />
+      </div>
+    );
+
+  return (
+    <section className="min-h-screen bg-gray-50">
+      <Toast toasts={toasts} />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Leave Management</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Apply for leave and manage requests</p>
+          </div>
+          <button
+            onClick={() => setShowApply(true)}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition flex items-center gap-2"
+          >
+            <Plus size={15} /> Apply for Leave
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
 
-/* ─── Application Row ─── */
-function AppRow({ app, onClick, idx }) {
-  const stCfg   = STATUS_CONFIG[app.status];
-  const typeCfg = TYPE_CONFIG[app.type];
-  const TypeIcon = typeCfg?.icon || FileText;
-  const days = getDays(app.fromDate, app.toDate);
-
-  return (
-    <tr
-      onClick={onClick}
-      className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50/60"} hover:bg-blue-50/30 transition border-b border-gray-50 last:border-b-0 cursor-pointer`}
-    >
-      <td className="py-3 px-4 text-xs text-gray-400 font-medium tabular-nums">#{app.id}</td>
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-2">
-          <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${typeCfg?.color}`}>
-            <TypeIcon size={13} />
-          </span>
-          <div>
-            <div className="text-sm font-medium text-gray-800">{app.subType}</div>
-            <div className={`text-[11px] font-medium ${typeCfg?.color.split(" ")[1]}`}>{app.type}</div>
+        {/* Balance Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="col-span-2 md:col-span-1 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl p-5 text-white">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+              <CalendarDays size={18} className="text-white" />
+            </div>
+            <p className="text-3xl font-bold">{totalBalance}</p>
+            <p className="text-blue-100 text-sm mt-1">Total Leave Balance</p>
           </div>
-        </div>
-      </td>
-      <td className="py-3 px-4 text-center text-xs text-gray-500 tabular-nums whitespace-nowrap">
-        {app.fromDate} → {app.toDate}
-      </td>
-      <td className="py-3 px-4 text-center text-xs font-medium text-gray-600">{days}d</td>
-      <td className="py-3 px-4 text-center text-xs text-gray-500 tabular-nums">{app.submittedDate}</td>
-      {/* Amount column */}
-      <td className="py-3 px-4 text-center text-xs font-medium text-gray-700">
-        {app.amount ? <span className="font-semibold text-amber-700">SAR {app.amount}</span> : <span className="text-gray-300">—</span>}
-      </td>
-      <td className="py-3 px-4 text-center">
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${stCfg?.badge}`}>
-          {React.createElement(stCfg?.icon, { size: 11 })} {app.status}
-        </span>
-      </td>
-    </tr>
-  );
-}
 
-/* ─── Main Page ─── */
-export default function MyApplicationsPage() {
-  const today = "2026-03-05";
-  const [applications, setApplications] = useState(INITIAL_APPLICATIONS);
-  const [search, setSearch]             = useState("");
-  const [filterType, setFilterType]     = useState("All");
-  const [filterStatus, setFilterStatus] = useState("All");
-  const [page, setPage]                 = useState(1);
-  const [selected, setSelected]         = useState(null);
-  const [showNew, setShowNew]           = useState(false);
-  const PAGE_SIZE = 8;
-
-  /* Stats */
-  const stats = useMemo(() => ({
-    total:    applications.length,
-    pending:  applications.filter(a => a.status === "Pending").length,
-    approved: applications.filter(a => a.status === "Approved").length,
-    rejected: applications.filter(a => a.status === "Rejected").length,
-  }), [applications]);
-
-  /* Filtered + sorted */
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return [...applications]
-      .sort((a, b) => new Date(b.submittedDate) - new Date(a.submittedDate))
-      .filter(a =>
-        (!q || a.type.toLowerCase().includes(q) || a.subType.toLowerCase().includes(q) || String(a.id).includes(q)) &&
-        (filterType   === "All" || a.type   === filterType) &&
-        (filterStatus === "All" || a.status === filterStatus)
-      );
-  }, [search, filterType, filterStatus, applications]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const setFilter  = fn => { fn(); setPage(1); };
-
-  const activeFilters = [
-    filterType   !== "All" && { key: "type",   label: filterType },
-    filterStatus !== "All" && { key: "status", label: filterStatus },
-    search                 && { key: "search", label: `"${search}"` },
-  ].filter(Boolean);
-
-  const clearFilter = key => {
-    setPage(1);
-    if (key === "type")   setFilterType("All");
-    if (key === "status") setFilterStatus("All");
-    if (key === "search") setSearch("");
-  };
-
-  const handleSubmit = (data) => {
-    const newApp = {
-      id: 3000 + applications.length + 1,
-      ...data,
-      status: "Pending",
-      submittedDate: today,
-      approvedBy: null, rejectedBy: null, rejectedReason: null,
-    };
-    setApplications(prev => [newApp, ...prev]);
-  };
-
-  const handleWithdraw = id => {
-    setApplications(prev => prev.filter(a => a.id !== id));
-  };
-
-  /* Summary by type */
-  const typeSummary = useMemo(() =>
-    Object.keys(TYPE_CONFIG).map(t => ({
-      type: t,
-      total:    applications.filter(a => a.type === t).length,
-      pending:  applications.filter(a => a.type === t && a.status === "Pending").length,
-      approved: applications.filter(a => a.type === t && a.status === "Approved").length,
-    })).filter(s => s.total > 0),
-  [applications]);
-
-  return (
-    <div className="min-h-screen bg-gray-50 px-8 py-10 text-gray-900">
-
-      {/* Header */}
-      <header className="mb-8 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold">My Applications</h1>
-          <p className="text-sm text-gray-500 mt-1">Leave, Travel & Requests · {new Date(today).toDateString()}</p>
-        </div>
-        <button
-          onClick={() => setShowNew(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition shadow-sm"
-        >
-          <PlusCircle size={16} /> New Application
-        </button>
-      </header>
-
-      {/* Widgets */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Widget title="Total"    value={stats.total}    sub="All applications"    icon={FileText}    color="border-blue-300 bg-blue-50 text-blue-700"    />
-        <Widget title="Pending"  value={stats.pending}  sub="Awaiting approval"   icon={Clock}       color="border-yellow-300 bg-yellow-50 text-yellow-700" />
-        <Widget title="Approved" value={stats.approved} sub="Processed"           icon={CheckCircle2} color="border-green-300 bg-green-50 text-green-700"  />
-        <Widget title="Rejected" value={stats.rejected} sub="Needs resubmission"  icon={XCircle}     color="border-red-300 bg-red-50 text-red-700"         />
-      </div>
-
-      {/* Type summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-        {Object.entries(TYPE_CONFIG).map(([t, cfg]) => {
-          const Icon = cfg.icon;
-          const summary = typeSummary.find(s => s.type === t) || { total: 0, pending: 0, approved: 0 };
-          return (
-            <button key={t} onClick={() => setFilter(() => setFilterType(filterType === t ? "All" : t))}
-              className={`bg-white rounded-2xl p-4 shadow-sm border-2 transition text-left
-                ${filterType === t ? `${cfg.border} shadow-md` : "border-transparent hover:border-gray-200"}`}>
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${cfg.color}`}>
-                <Icon size={17} />
+          {(summary?.summaries || []).slice(0, 3).map((s, i) => {
+            const col = TYPE_COLORS[i % TYPE_COLORS.length];
+            return (
+              <div key={s.leave_type_id}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col justify-between">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${col.icon}`}>
+                  <CalendarDays size={16} />
+                </div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {s.remaining < 0 ? "∞" : s.remaining}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">{s.leave_type_name}</p>
               </div>
-              <div className="text-sm font-semibold text-gray-800">{t}</div>
-              <div className="text-xs text-gray-400 mt-0.5">{summary.total} total · {summary.pending} pending</div>
-            </button>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-        <div className="flex gap-2 flex-wrap items-center">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input type="text" value={search} onChange={e => setFilter(() => setSearch(e.target.value))}
-              placeholder="Search applications…"
-              className="pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-sm bg-white outline-none focus:border-gray-400 transition placeholder-gray-400 w-44" />
+        {/* Leave History Table */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-base font-bold text-gray-900">My Leave History</h2>
+            <div className="flex items-center gap-2">
+              <button onClick={load}
+                className="w-8 h-8 flex items-center justify-center rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition">
+                <RefreshCw size={13} />
+              </button>
+              <div className="relative">
+                <select value={filter} onChange={(e) => setFilter(e.target.value)}
+                  className="appearance-none pl-3 pr-8 py-2 border border-gray-200 rounded-xl text-sm text-gray-600 bg-white outline-none focus:border-blue-400 transition cursor-pointer">
+                  <option>All</option>
+                  <option>PENDING</option>
+                  <option>APPROVED</option>
+                  <option>REJECTED</option>
+                  <option>CANCELLED</option>
+                </select>
+                <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
           </div>
 
-          {[
-            { val: filterType,   set: setFilterType,   placeholder: "All Types",    opts: Object.keys(TYPE_CONFIG) },
-            { val: filterStatus, set: setFilterStatus, placeholder: "All Statuses", opts: ["Pending", "Approved", "Rejected"] },
-          ].map(({ val, set, placeholder, opts }) => (
-            <select key={placeholder} value={val} onChange={e => setFilter(() => set(e.target.value))}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white outline-none focus:border-gray-400 cursor-pointer transition text-gray-700">
-              <option value="All">{placeholder}</option>
-              {opts.map(o => <option key={o}>{o}</option>)}
-            </select>
-          ))}
-
-          {activeFilters.length > 0 && (
-            <button onClick={() => { setSearch(""); setFilterType("All"); setFilterStatus("All"); setPage(1); }}
-              className="text-xs text-gray-400 hover:text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50 transition">
-              Clear all
-            </button>
+          {filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CalendarDays size={24} className="text-gray-400" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 mb-1">No applications found</h3>
+              <p className="text-sm text-gray-500">Try adjusting your filter or submit a new leave request.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    {["Leave Type", "Duration", "Days", "Applied On", "Status"].map((h) => (
+                      <th key={h}
+                        className="px-6 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {filtered.map((app) => (
+                    <tr key={app.id} onClick={() => setSelectedId(app.id)}
+                      className="hover:bg-gray-50 cursor-pointer transition">
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-semibold text-gray-800">
+                          {app.leave_type?.name || "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">
+                          {fmt(app.start_date)} – {fmt(app.end_date)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-700 font-medium">{app.requested_days}d</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-500">{fmt(app.requested_at)}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadge status={app.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
-        <span className="text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
       </div>
 
-      {/* Active filter pills */}
-      {activeFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {activeFilters.map(f => (
-            <span key={f.key} className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-900 text-white text-xs font-medium rounded-full">
-              {f.label}
-              <button className="opacity-60 hover:opacity-100 transition" onClick={() => clearFilter(f.key)}><X size={10} /></button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Table */}
-      <Card title="Application History" action={
-        <span className="text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</span>
-      }>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm border-collapse">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                {["#ID", "Type", "Date Range", "Duration", "Submitted", "Amount", "Status"].map((h, i) => (
-                  <th key={h} className={`py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap ${i <= 1 ? "text-left" : "text-center"}`}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.length === 0 ? (
-                <tr><td colSpan={7} className="py-16 text-center">
-                  <FileText size={30} className="mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm text-gray-400">No applications found.</p>
-                  <button onClick={() => setShowNew(true)} className="mt-3 text-sm text-blue-600 font-medium hover:underline">
-                    + Submit a new one
-                  </button>
-                </td></tr>
-              ) : paginated.map((a, i) => (
-                <AppRow key={a.id} app={a} idx={i} onClick={() => setSelected(a)} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-4 text-sm pt-3 border-t border-gray-100">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition text-gray-600">
-              <ChevronLeft size={14} /> Previous
-            </button>
-            <span className="text-gray-500">Page {page} of {totalPages}</span>
-            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition text-gray-600">
-              Next <ChevronRight size={14} />
-            </button>
-          </div>
-        )}
-      </Card>
-
       {/* Modals */}
-      {showNew  && <NewApplicationModal onClose={() => setShowNew(false)}  onSubmit={handleSubmit} />}
-      {selected && <DetailModal app={selected} onClose={() => setSelected(null)} onCancel={handleWithdraw} />}
-    </div>
+      {showApply && (
+        <ApplyModal
+          leaveTypes={leaveTypes}
+          onClose={() => setShowApply(false)}
+          onSuccess={() => { setShowApply(false); load(); }}
+          addToast={addToast}
+        />
+      )}
+      {selectedId && (
+        <DetailDrawer
+          appId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onCancel={() => { setSelectedId(null); load(); }}
+          addToast={addToast}
+        />
+      )}
+    </section>
   );
 }

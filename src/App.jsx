@@ -20,7 +20,6 @@ import Attendance from "./Pages/Attendance/Attendance";
 import Policy from "./Pages/Policies/Policies";
 import KPI from "./Pages/KPI/KPI";
 import NewPassword from "./Pages/Login/NewPassword";
-import Applications from "./Pages/Applications/Applications";
 import Notice from "./Pages/Notice/Notice";
 import EmployeeAttendanceDetails from "./Pages/Attendance/EmployeeAttendanceDetails";
 import DepartmentPage from "./Pages/Department/Departments";
@@ -28,7 +27,11 @@ import RolesPage from "./Pages/Roles/Roles";
 import Shifts from "./Pages/Shifts/Shifts";
 import AttendanceSync from "./Pages/AttendanceSync/AttendanceSync";
 import ResetPassword from "./Pages/Login/ResetPassword";
-
+import Applications from "./Pages/Applications/Applications"; //leave
+import LeaveManagementNew from "./Pages/LeaveManagment/LeaveManagementNew"; //leave
+import LeaveManagement from "./Pages/LeaveManagment/LeaveManagement"; //leave
+import LeaveManagementMain from "./Pages/LeaveManagment/LeaveManagementMain"; //leave - NEW
+import LeaveBalanceOverview from "./Pages/LeaveManagment/LeaveBalanceOverview"; //leave - Balance Overview
 // hod pages
 import HodAttendance from "./Pages/Attendance/AttendanceHOD";
 import HodEmployees from "./Pages/employee_mangmant/EmployeesHod";
@@ -41,7 +44,6 @@ import MyPolicy from "./Pages/MySection/MyPolicies";
 import MyAttendance from "./Pages/MySection/MyAttendance";
 
 import ComingSoon from "./Pages/CommingSoon/CommingSoon";
-import LeaveManagement from "./Pages/LeaveManagment/LeaveManagement";
 
 function AppContent() {
   const [ui, setUI] = useState(null);
@@ -228,15 +230,32 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-            <Route
-             path="/hod-attendance"
-             element={
-               <ProtectedRoute minLevel={6}>
-                 <HodAttendance />
-               </ProtectedRoute>
-             }
-           />
-           <Route
+          {/* <Route
+            path="/attendance"
+            element={
+              <ProtectedRoute minLevel={4}>
+                <Attendance />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/attendance/employee/:employeeId"
+            element={
+              <ProtectedRoute minLevel={4}>
+                <EmployeeAttendanceDetails />
+              </ProtectedRoute>
+            }
+          /> */}
+          <Route
+            path="/hod-attendance"
+            element={
+              <ProtectedRoute minLevel={6}>
+                <HodAttendance />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/hod-attendance/employee/:employeeId"
             element={
               <ProtectedRoute minLevel={6}>
@@ -258,6 +277,22 @@ function AppContent() {
           <Route path="/policy" element={<Policy />} />
           <Route path="/notice" element={<Notice />} />
           <Route path="/kpi" element={<ComingSoon />} />
+          <Route
+            path="/leaves"
+            element={
+              <ProtectedRoute minLevel={4}>
+                <LeaveManagementMain />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/leave-management"
+            element={
+              <ProtectedRoute minLevel={4}>
+                <LeaveManagementMain />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/leave-managment" element={<LeaveManagement />} />
 
           <Route path="/reports" element={<ComingSoon />} />
@@ -265,6 +300,7 @@ function AppContent() {
 
           {/* 👤 My Section */}
           <Route path="/my-applications" element={<MyApplications />} />
+          <Route path="/leave-balance" element={<LeaveBalanceOverview />} />
           <Route path="/my-notices" element={<MyNotices />} />
           <Route path="/my-training" element={<MyTraining />} />
           <Route path="/my-policies" element={<MyPolicy />} />

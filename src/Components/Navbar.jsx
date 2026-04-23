@@ -61,7 +61,6 @@ function LiveClock() {
   );
 }
 
-
 function decodeAuthToken() {
   try {
     const token = localStorage.getItem("access_token");
@@ -164,7 +163,6 @@ export default function Navbar({ setIsOpen, onLogout }) {
             imageUrl = imageUrl.startsWith("/")
               ? apiBase + imageUrl
               : apiBase + "/" + imageUrl;
-            
           }
         }
 
