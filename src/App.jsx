@@ -28,10 +28,10 @@ import Shifts from "./Pages/Shifts/Shifts";
 import AttendanceSync from "./Pages/AttendanceSync/AttendanceSync";
 import ResetPassword from "./Pages/Login/ResetPassword";
 import Applications from "./Pages/Applications/Applications"; //leave
-import LeaveManagementNew from "./Pages/LeaveManagment/LeaveManagementNew"; //leave
-import LeaveManagement from "./Pages/LeaveManagment/LeaveManagement"; //leave
+// import LeaveManagementNew from "./Pages/LeaveManagment/LeaveManagementNew"; //leave
+// import LeaveManagement from "./Pages/LeaveManagment/LeaveManagement"; //leave
 import LeaveManagementMain from "./Pages/LeaveManagment/LeaveManagementMain"; //leave - NEW
-import LeaveBalanceOverview from "./Pages/LeaveManagment/LeaveBalanceOverview"; //leave - Balance Overview
+// import LeaveBalanceOverview from "./Pages/LeaveManagment/LeaveBalanceOverview"; //leave - Balance Overview
 // hod pages
 import HodAttendance from "./Pages/Attendance/AttendanceHOD";
 import HodEmployees from "./Pages/employee_mangmant/EmployeesHod";
@@ -293,14 +293,14 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route path="/leave-managment" element={<LeaveManagement />} />
+          {/* <Route path="/leave-managment" element={<LeaveManagement />} /> */}
 
           <Route path="/reports" element={<ComingSoon />} />
           <Route path="/training" element={<ComingSoon />} />
 
           {/* 👤 My Section */}
           <Route path="/my-applications" element={<MyApplications />} />
-          <Route path="/leave-balance" element={<LeaveBalanceOverview />} />
+          {/* <Route path="/leave-balance" element={<LeaveBalanceOverview />} /> */}
           <Route path="/my-notices" element={<MyNotices />} />
           <Route path="/my-training" element={<MyTraining />} />
           <Route path="/my-policies" element={<MyPolicy />} />

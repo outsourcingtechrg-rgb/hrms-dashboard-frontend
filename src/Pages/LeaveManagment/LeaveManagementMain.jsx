@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { API } from "../../Components/Apis";
 // ─── API ──────────────────────────────────────────────────────────────────────
- 
+
 const token = () => localStorage.getItem("access_token") || "";
 const authHeaders = () => ({ Authorization: `Bearer ${token()}` });
 const jsonHeaders = () => ({ ...authHeaders(), "Content-Type": "application/json" });
@@ -20,7 +20,22 @@ const apiFetch = async (url, opts = {}) => {
   }
   return res.json();
 };
-
+async function downloadWithAuth(url, filename) {
+  const res = await fetch(url, { headers: authHeaders() });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || "Download failed");
+  }
+  const blob = await res.blob();
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename || "attachment";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(href);
+}
 const fmt = (d) => d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "-";
 const today = () => new Date().toISOString().split("T")[0];
 
@@ -41,6 +56,8 @@ function StatusBadge({ status }) {
     </span>
   );
 }
+
+
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function Toast({ toasts }) {
@@ -80,6 +97,19 @@ function ReviewModal({ app, action, onClose, onDone, addToast }) {
   const [note, setNote]       = useState("");
   const [loading, setLoading] = useState(false);
   const [atts, setAtts]       = useState([]);
+  const [downloading, setDownloading] = useState(null);
+
+  
+  const handleDownload = async (att) => {
+    setDownloading(att.id);
+    try {
+      await downloadWithAuth(API.DownloadAttachment(att.id), att.file_name);
+    } catch (e) {
+      addToast(e.message, "error");
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   useEffect(() => {
     apiFetch(API.GetManagementAttachments(app.id)).then(setAtts).catch(() => {});
@@ -153,10 +183,16 @@ function ReviewModal({ app, action, onClose, onDone, addToast }) {
                       <Paperclip size={12} className="text-gray-400" />
                       <span className="text-xs text-gray-600 truncate">{a.file_name}</span>
                     </div>
-                    <a href={API.DownloadManagementAttachment(a.id)} target="_blank" rel="noreferrer"
-                      className="text-blue-600 text-xs font-semibold hover:underline ml-2 flex items-center gap-1">
-                      <Download size={10} /> DL
-                    </a>
+                    <button
+                        onClick={() => handleDownload(a)}
+                        disabled={downloading === a.id}
+                        className="flex items-center gap-1 text-blue-600 text-xs font-semibold hover:underline ml-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                        {downloading === a.id
+                        ? <Loader2 size={11} className="animate-spin" />
+                        : <Download size={11} />}
+                        {downloading === a.id ? "Downloading…" : "Download"}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -365,7 +401,6 @@ export default function LeaveManagement() {
   const [cycleModal, setCycleModal] = useState(null); // null | "new" | cycle obj
   const [typeModal, setTypeModal]   = useState(null);
   const [toasts, setToasts]         = useState([]);
-
   const addToast = useCallback((msg, type = "success") => {
     const id = Date.now();
     setToasts((p) => [...p, { id, msg, type }]);
