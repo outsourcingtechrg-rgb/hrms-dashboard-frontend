@@ -55,24 +55,14 @@ const roleDashboardMap = {
   9: InternDashboard,
 };
 
-//  for testing propose only
-// const roleDashboardMap = {
-//   1: SupperAdminDashboard,
-//   2: CeoDashboard,
-//   3: HrAdminDashboard,
-//   4: HrDashboard,
-//   5: DepartmentHeadDashboard,
-//   6: LeadDashboard,
-//   7: LeadDashboard,
-//   8: EmployeeDashboard,
-//   9: EmployeeDashboard,
-// };
 const MY_SECTION = [
   { label: "My Attendance", icon: Clock, path: "/my-attendance", my: true },
   { label: "My Applications", icon: Ticket, path: "/my-applications", my: true },
   { label: "My Notices", icon: FileText, path: "/my-notices", my: true },
   { label: "My Training", icon: GraduationCap, path: "/my-training", my: true },
   { label: "My Policies", icon: Shield, path: "/my-policies", my: true },
+  { label: "My work", icon: Shield, path: "/work", my: true },
+  { label: "My Tickets", icon: Ticket, path: "/my-tickets", my: true },
 ];
 /* =========================
    SIDEBAR MAP
@@ -85,6 +75,7 @@ const roleSidebarMap = {
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
       // { label: "Timings", icon: Calendar, path: "/timings", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
+      { label: "Tickets", icon: Ticket, path: "/tickets", my: false },
       { label: "Employees", icon: Users, path: "/employees", my: false },
       { label: "Roles", icon: Settings, path: "/roles", my: false },
       { label: "departments", icon: House, path: "/departments", my: false },
@@ -155,7 +146,9 @@ const roleSidebarMap = {
     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
       // { label: "Attendance", icon: Clock, path: "/attendance", my: false },
+      { label: "Tickets", icon: Ticket, path: "/tickets", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
+      { label: "Tickets", icon: Ticket, path: "/tickets", my: false },
       { label: "Attendance", icon: House, path: "/hod-attendance", my: false },
       { label: "Employees", icon: Users, path: "/hod-employees", my: false },
       { label: "Reports", icon: FileText, path: "/reports", my: false },

@@ -328,4 +328,35 @@ GetAttendanceAdminSummary: (month, department_id) => {
 
   GetDashboardStats: () =>
     `${mainOrigin}/leaves/dashboard/stats`,
+
+
+
+
+  // Tickets
+
+  list:          ()    => `${BASE}/tickets/my`,
+  create:        ()    => `${BASE}/tickets`,
+  detail:        (id)  => `${BASE}/tickets/${id}`,
+  cancel:        (id)  => `${BASE}/tickets/${id}/cancel`,
+  comment:       (id)  => `${BASE}/tickets/${id}/comments`,
+  attachments:   (id)  => `${BASE}/tickets/${id}/attachments`,
+  uploadAtt:     (id)  => `${BASE}/tickets/${id}/attachments`,
+  downloadAtt:   (id)  => `${BASE}/tickets/attachments/${id}/download`,
+  categories:    ()    => `${BASE}/tickets/categories`,
+
+  all:              (p = "") => `${BASE}/tickets${p}`,
+  detail:           (id)    => `${BASE}/tickets/${id}`,
+  assign:           (id)    => `${BASE}/tickets/${id}/assign`,
+  resolve:          (id)    => `${BASE}/tickets/${id}/resolve`,
+  close:            (id)    => `${BASE}/tickets/${id}/close`,
+  comment:          (id)    => `${BASE}/tickets/${id}/comments`,
+  attachments:      (id)    => `${BASE}/tickets/${id}/attachments`,
+  mgmtAtts:         (id)    => `${BASE}/tickets/management/${id}/attachments`,
+  downloadAtt:      (aid)   => `${BASE}/tickets/management/attachments/${aid}/download`,
+  categories:       ()      => `${BASE}/tickets/categories`,
+  createCategory:   ()      => `${BASE}/tickets/categories`,
+  updateCategory:   (id)    => `${BASE}/tickets/categories/${id}`,
+  deleteCategory:   (id)    => `${BASE}/tickets/categories/${id}`,
+  stats:            ()      => `${BASE}/tickets/dashboard/stats`,
+  employees:        ()      => `${BASE}/employees`,
 };

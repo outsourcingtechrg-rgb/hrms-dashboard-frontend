@@ -42,8 +42,12 @@ import MyApplications from "./Pages/MySection/myApplications";
 import MyTraining from "./Pages/MySection/MyTraining";
 import MyPolicy from "./Pages/MySection/MyPolicies";
 import MyAttendance from "./Pages/MySection/MyAttendance";
+import Mywork from "./Pages/MySection/Mywork";
 
 import ComingSoon from "./Pages/CommingSoon/CommingSoon";
+import MyTickets from "./Pages/MySection/MyTicket";
+import { Tickets } from "lucide-react";
+import TicketManagement from "./Pages/Ticket_Mangment/TicketMangment";
 
 function AppContent() {
   const [ui, setUI] = useState(null);
@@ -272,27 +276,32 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/tickets"
+            element={
+              <ProtectedRoute minLevel={9}>
+                <TicketManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/work"
+            element={
+              <ProtectedRoute minLevel={8}>
+                <Mywork />
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="/applications" element={<Applications />} />
           <Route path="/policy" element={<Policy />} />
           <Route path="/notice" element={<Notice />} />
           <Route path="/kpi" element={<ComingSoon />} />
-          <Route
-            path="/leaves"
-            element={
+          <Route path="/leave-management" element={
               <ProtectedRoute minLevel={4}>
                 <LeaveManagementMain />
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/leave-management"
-            element={
-              <ProtectedRoute minLevel={4}>
-                <LeaveManagementMain />
-              </ProtectedRoute>
-            }
-          />
+            }/>
           {/* <Route path="/leave-managment" element={<LeaveManagement />} /> */}
 
           <Route path="/reports" element={<ComingSoon />} />
@@ -300,6 +309,7 @@ function AppContent() {
 
           {/* 👤 My Section */}
           <Route path="/my-applications" element={<MyApplications />} />
+          <Route path="/my-tickets" element={<MyTickets />} />
           {/* <Route path="/leave-balance" element={<LeaveBalanceOverview />} /> */}
           <Route path="/my-notices" element={<MyNotices />} />
           <Route path="/my-training" element={<MyTraining />} />

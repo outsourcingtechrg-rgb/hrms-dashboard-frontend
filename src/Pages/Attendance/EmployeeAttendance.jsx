@@ -1198,7 +1198,7 @@ export default function MyAttendancePage({ employeeId: propEmpId, onBack }) {
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Attendance record & monthly overview
-          </p>
+          </p> 
           {(user.designation || user.role || user.department) && (
             <div className="flex flex-wrap gap-2 mt-2">
               {user.role && (
