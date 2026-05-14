@@ -359,4 +359,53 @@ GetAttendanceAdminSummary: (month, department_id) => {
   deleteCategory:   (id)    => `${BASE}/tickets/categories/${id}`,
   stats:            ()      => `${BASE}/tickets/dashboard/stats`,
   employees:        ()      => `${BASE}/employees`,
+
+  // tickets
+  // my tickets
+  list:          ()    => `${BASE}/tickets/my`,
+  create:        ()    => `${BASE}/tickets`,
+  detail:        (id)  => `${BASE}/tickets/${id}`,
+  cancel:        (id)  => `${BASE}/tickets/${id}/cancel`,
+  comment:       (id)  => `${BASE}/tickets/${id}/comments`,
+  attachments:   (id)  => `${BASE}/tickets/${id}/attachments`,
+  uploadAtt:     (id)  => `${BASE}/tickets/${id}/attachments`,
+  downloadAtt:   (id)  => `${BASE}/tickets/attachments/${id}/download`,
+  categories:    ()    => `${BASE}/tickets/categories`,
+  // ticket management
+   me: () => {
+  const tokenData = getTokenData();
+  const EPI = tokenData?.EPI;
+
+  if (!EPI) throw new Error("Invalid token: EPI missing");
+
+  return `${BASE}/employees/${EPI}/role`;
+},
+  all:             ()    => `${BASE}/tickets`,
+  detail:          (id)  => `${BASE}/tickets/${id}`,
+  assign:          (id)  => `${BASE}/tickets/${id}/assign`,
+  resolve:         (id)  => `${BASE}/tickets/${id}/resolve`,
+  close:           (id)  => `${BASE}/tickets/${id}/close`,
+  comment:         (id)  => `${BASE}/tickets/${id}/comments`,
+  mgmtAtts:        (id)  => `${BASE}/tickets/management/${id}/attachments`,
+  downloadAtt:     (aid) => `${BASE}/tickets/management/attachments/${aid}/download`,
+  categories:      ()    => `${BASE}/tickets/categories`,
+  createCategory:  ()    => `${BASE}/tickets/categories`,
+  updateCategory:  (id)  => `${BASE}/tickets/categories/${id}`,
+  deleteCategory:  (id)  => `${BASE}/tickets/categories/${id}`,
+  stats:           ()    => `${BASE}/tickets/dashboard/stats`,
+  employees:       ()    => `${BASE}/employees`,
+  departments:     ()    => `${BASE}/departments`,
+
+  // my work tickets
+    me:          ()    => {
+    const tokenData = getTokenData();
+    const EPI = tokenData?.EPI;
+    return EPI ? `${BASE}/employees/${EPI}/role` : `${BASE}/auth/me`;
+  },
+  all:         ()    => `${BASE}/tickets`,
+  detail:      (id)  => `${BASE}/tickets/${id}`,
+  resolve:     (id)  => `${BASE}/tickets/${id}/resolve`,
+  comment:     (id)  => `${BASE}/tickets/${id}/comments`,
+  mgmtAtts:    (id)  => `${BASE}/tickets/management/${id}/attachments`,
+  downloadAtt: (aid) => `${BASE}/tickets/management/attachments/${aid}/download`,
 };

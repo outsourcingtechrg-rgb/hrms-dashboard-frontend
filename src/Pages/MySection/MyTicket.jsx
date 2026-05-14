@@ -18,6 +18,7 @@ import {
   ArrowUpRight, Circle, AlertCircle, CheckCheck, Inbox,
   Info,
 } from "lucide-react";
+import { API as TICKET_API } from "../../Components/Apis";
 
 // ─── Font injection ───────────────────────────────────────────────────────────
 
@@ -64,19 +65,6 @@ async function tkDownload(url, filename) {
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(href);
 }
-
-const BASE = "http://127.0.0.1:8000/api/v1";
-const TICKET_API = {
-  list:          ()    => `${BASE}/tickets/my`,
-  create:        ()    => `${BASE}/tickets`,
-  detail:        (id)  => `${BASE}/tickets/${id}`,
-  cancel:        (id)  => `${BASE}/tickets/${id}/cancel`,
-  comment:       (id)  => `${BASE}/tickets/${id}/comments`,
-  attachments:   (id)  => `${BASE}/tickets/${id}/attachments`,
-  uploadAtt:     (id)  => `${BASE}/tickets/${id}/attachments`,
-  downloadAtt:   (id)  => `${BASE}/tickets/attachments/${id}/download`,
-  categories:    ()    => `${BASE}/tickets/categories`,
-};
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PRIORITY = {
