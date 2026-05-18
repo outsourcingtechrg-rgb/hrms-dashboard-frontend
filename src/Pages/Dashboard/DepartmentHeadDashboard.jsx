@@ -183,6 +183,7 @@ const ATT_STATUS = {
     badge: "bg-slate-50 text-slate-600 border-slate-200",
   },
 };
+const HIDDEN_EMP_STATUSES = ["terminated", "resigned"];
 const APP_STATUS = {
   Pending: "bg-violet-100 text-violet-700",
   HOD_Approved: "bg-sky-100 text-sky-700",
@@ -527,7 +528,10 @@ function DepartmentView({ auth, dept }) {
       .then((r) => (r.ok ? r.json() : []))
       .then((d) => {
         const all = Array.isArray(d) ? d : d.employees || [];
-        setEmployees(filterEmployeesByDepartment(all, auth));
+        const filtered = filterEmployeesByDepartment(all, auth).filter(
+          (e) => !HIDDEN_EMP_STATUSES.includes(e.employment_status),
+        );
+        setEmployees(filtered);
       })
       .catch(() => {})
       .finally(() => setEmpLoad(false));

@@ -252,42 +252,6 @@ function StatusToggle({ employee, onStatusChange, canChangeStatus }) {
   const current = employee.employment_status || "inactive";
   const isActive = current === "active";
 
-  /* clicking the pill-toggle just flips active ↔ inactive quickly */
-  const handlePillClick = async (e) => {
-    e.stopPropagation();
-    if (!canChangeStatus) {
-      alert("You don't have permission to change employee status.");
-      return;
-    }
-    const nextStatus = isActive ? "inactive" : "active";
-    await applyStatus(nextStatus);
-  };
-
-  /* choosing from the dropdown sets any status */
-  const handleSelect = async (status) => {
-    setOpen(false);
-    if (status === current) return;
-    await applyStatus(status);
-  };
-
-  const applyStatus = async (status) => {
-    setLoading(true);
-    try {
-      const res = await fetch(API.UpdateEmployee(employee.id), {
-        method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ ...employee, employment_status: status }),
-      });
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const updated = await res.json();
-      onStatusChange(updated);
-    } catch (err) {
-      console.error("[StatusToggle]", err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const stCfg = STATUS_CFG[current] || STATUS_CFG.inactive;
 
   return (
@@ -298,8 +262,13 @@ function StatusToggle({ employee, onStatusChange, canChangeStatus }) {
       {/* ── Pill toggle: active ↔ inactive ── */}
       <button
         disabled={loading || !canChangeStatus}
-        onClick={handlePillClick}
-        title={canChangeStatus ? (isActive ? "Click to deactivate" : "Click to activate") : "Permission denied"}
+        title={
+          canChangeStatus
+            ? isActive
+              ? "Click to deactivate"
+              : "Click to activate"
+            : "Permission denied"
+        }
         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-50
           ${isActive ? "bg-green-500" : "bg-gray-300"}`}
       >
@@ -1330,10 +1299,13 @@ export default function EmployeeManagementPage() {
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
   }, [scopedEmployees, scopedDepartments]);
 
+  const HIDDEN_STATUSES = ["terminated", "resigned"];
+
   /* ── Filter ── */
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return scopedEmployees.filter((e) => {
+      if (HIDDEN_STATUSES.includes(e.employment_status)) return false;
       const name = fullName(e).toLowerCase();
       const matchQ =
         !q ||
@@ -1765,7 +1737,9 @@ export default function EmployeeManagementPage() {
                           <button
                             onClick={() => {
                               if (!canEditDelete) {
-                                alert("You don't have permission to edit employees.");
+                                alert(
+                                  "You don't have permission to edit employees.",
+                                );
                                 return;
                               }
                               setEditEmp(emp);
@@ -1779,14 +1753,18 @@ export default function EmployeeManagementPage() {
                           <button
                             onClick={() => {
                               if (!canEditDelete) {
-                                alert("You don't have permission to delete employees.");
+                                alert(
+                                  "You don't have permission to delete employees.",
+                                );
                                 return;
                               }
                               setDeleteTarget(emp);
                             }}
                             disabled={!canEditDelete}
                             className="w-7 h-7 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                            title={canEditDelete ? "Remove" : "Permission denied"}
+                            title={
+                              canEditDelete ? "Remove" : "Permission denied"
+                            }
                           >
                             <Trash2 size={13} />
                           </button>

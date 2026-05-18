@@ -54,6 +54,7 @@ import {
   Star,
 } from "lucide-react";
 import { API } from "../../Components/Apis";
+import { Await } from "react-router-dom";
 
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600&display=swap');
@@ -150,7 +151,12 @@ const isHR = (user) => {
   ].includes(user?.level);
 };
 
-const isDepartmentHead = (user) => user?.level === ROLE_LEVELS.DEPARTMENT_HEAD;
+const isDepartmentHead = (user) =>
+  [
+    ROLE_LEVELS.DEPARTMENT_HEAD,
+    ROLE_LEVELS.LEAD,
+    ROLE_LEVELS.EMPLOYEE,
+  ].includes(user?.level);
 
 const PRIORITY = {
   LOW: {
@@ -2772,24 +2778,41 @@ export default function TicketManagement() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [me, t, c, e, d, s] = await Promise.all([
-        tmFetch(API.me()),
+      const tokenData = getTokenData() || {};
+      console.log("Token Data:", tokenData);
+
+      const [t, c, e, d, s] = await Promise.all([
         tmFetch(API.all()),
         tmFetch(API.categories()).catch(() => []),
         tmFetch(API.employees()).catch(() => []),
         tmFetch(API.departments()).catch(() => []),
         tmFetch(API.stats()).catch(() => null),
       ]);
+      const empAll = await Promise.all(
+        Array.isArray(e)
+          ? e
+          : (e.employees || []).map((emp) => tmFetch(API.employeesAll(emp.id))),
+      );
       const empList = Array.isArray(e) ? e : e.employees || [];
-      const currentEmployee = resolveCurrentEmployee(me, empList);
-      setCurrentUser({
-        ...me,
-        ...(currentEmployee ? { id: currentEmployee.id } : {}),
-        employee_code: currentEmployee?.employee_id ?? me?.employee_id,
-        department_id: currentEmployee?.department_id ?? me?.department_id,
-        department: currentEmployee?.department ?? me?.department,
-        permissions: me?.extra_data?.permissions || [],
-      });
+      const matchedEmployee = empList.find(
+        (emp) =>
+          sameId(emp.id, tokenData.id) ||
+          sameId(emp.employee_id, tokenData.EPI),
+      );
+      console.log("Matched Employee:", matchedEmployee);
+      console.log("Employee List:", empList);
+
+      const userData = {
+        id: tokenData.id,
+        sub: tokenData.sub,
+        EPI: tokenData.EPI,
+        level: tokenData.level,
+        department_id: tokenData.department_id,
+        permissions: [],
+        ...(matchedEmployee ? matchedEmployee : {}),
+      };
+      setCurrentUser(userData);
+      console.log("Current User Set:", userData);
       const empMap = empList.reduce((m, emp) => {
         m[emp.id] = emp;
         return m;
@@ -2935,6 +2958,31 @@ export default function TicketManagement() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const pendingCount = scopedTickets.filter((t) => t.status === "OPEN").length;
+
+  // Overall ticket stats
+  const overallStats = useMemo(() => {
+    return {
+      open: filtered.filter((t) => t.status === "OPEN").length,
+      completed: filtered.filter((t) => t.status === "CLOSED").length,
+      resolved: filtered.filter((t) => t.status === "RESOLVED").length,
+    };
+  }, [filtered]);
+
+  // Monthly ticket stats
+  const monthlyStats = useMemo(() => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthFiltered = filtered.filter((t) => {
+      const createdDate = new Date(t.created_at || now);
+      return createdDate >= monthStart;
+    });
+    return {
+      open: monthFiltered.filter((t) => t.status === "OPEN").length,
+      resolved: monthFiltered.filter((t) => t.status === "RESOLVED").length,
+      inProgress: monthFiltered.filter((t) => t.status === "IN_PROGRESS")
+        .length,
+    };
+  }, [filtered]);
 
   const pageNums = useMemo(() => {
     const nums = Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -3295,6 +3343,213 @@ export default function TicketManagement() {
               </span>
             </div>
 
+            {/* Widget Section 1: Overall Stats */}
+            <div style={{ padding: "20px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 14,
+                  marginBottom: 20,
+                }}
+              >
+                {[
+                  {
+                    label: "Open",
+                    value: overallStats.open,
+                    Icon: Circle,
+                    color: "#2563eb",
+                    bg: "#eff6ff",
+                  },
+                  {
+                    label: "Completed",
+                    value: overallStats.completed,
+                    Icon: CheckCheck,
+                    color: "#6b7280",
+                    bg: "#f3f4f6",
+                  },
+                  {
+                    label: "Resolved",
+                    value: overallStats.resolved,
+                    Icon: CheckCircle2,
+                    color: "#059669",
+                    bg: "#ecfdf5",
+                  },
+                ].map(({ label, value, Icon, color, bg }) => (
+                  <div
+                    key={label}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 12,
+                      padding: "16px",
+                      border: "1px solid #e5e7eb",
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 2,
+                        background: color,
+                      }}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                        marginTop: 2,
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          color: "#9ca3af",
+                          margin: 0,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 6,
+                          background: bg,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Icon size={11} style={{ color }} />
+                      </div>
+                    </div>
+                    <p
+                      className="tm-serif"
+                      style={{
+                        fontSize: 28,
+                        color: "#111827",
+                        margin: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Widget Section 2: Monthly Stats */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gap: 14,
+                }}
+              >
+                {[
+                  {
+                    label: "Monthly Open",
+                    value: monthlyStats.open,
+                    Icon: Circle,
+                    color: "#2563eb",
+                    bg: "#eff6ff",
+                  },
+                  {
+                    label: "Monthly Resolved",
+                    value: monthlyStats.resolved,
+                    Icon: CheckCircle2,
+                    color: "#059669",
+                    bg: "#ecfdf5",
+                  },
+                  {
+                    label: "In Progress",
+                    value: monthlyStats.inProgress,
+                    Icon: Zap,
+                    color: "#7c3aed",
+                    bg: "#f5f3ff",
+                  },
+                ].map(({ label, value, Icon, color, bg }) => (
+                  <div
+                    key={label}
+                    style={{
+                      background: "#fff",
+                      borderRadius: 12,
+                      padding: "16px",
+                      border: "1px solid #e5e7eb",
+                      position: "relative",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 2,
+                        background: color,
+                      }}
+                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginBottom: 8,
+                        marginTop: 2,
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          color: "#9ca3af",
+                          margin: 0,
+                        }}
+                      >
+                        {label}
+                      </p>
+                      <div
+                        style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 6,
+                          background: bg,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Icon size={11} style={{ color }} />
+                      </div>
+                    </div>
+                    <p
+                      className="tm-serif"
+                      style={{
+                        fontSize: 28,
+                        color: "#111827",
+                        margin: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {paged.length === 0 ? (
               <div style={{ textAlign: "center", padding: "80px 20px" }}>
                 <Inbox
@@ -3354,8 +3609,8 @@ export default function TicketManagement() {
                       const fullName = emp
                         ? `${emp.f_name || ""} ${emp.l_name || ""}`.trim()
                         : `#${t.employee_id}`;
-                      const dept = emp?.department?.department || "—";
-                      const role = emp?.designation || "—";
+                      const dept = t.employee?.department?.department || "—";
+                      const role = t.employee?.designation || "—";
                       return (
                         <tr
                           key={t.id}

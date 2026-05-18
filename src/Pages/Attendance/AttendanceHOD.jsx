@@ -204,6 +204,7 @@ const STATUS_CFG = {
   },
 };
 const ALL_STATUSES = ["Present", "Late", "Early", "Absent", "Leave"];
+const HIDDEN_EMP_STATUSES = ["terminated", "resigned"];
 
 /* ─── Time helpers ─── */
 function to12(t) {
@@ -655,7 +656,11 @@ function DeptBreakdown({ employees, records, depts, filterDept, onDeptClick }) {
   const breakdown = useMemo(() => {
     return depts
       .map((d) => {
-        const dEmps = employees.filter((e) => e.department_id === d.id);
+        const dEmps = employees.filter(
+          (e) =>
+            e.department_id === d.id &&
+            !HIDDEN_EMP_STATUSES.includes(e.employment_status),
+        );
         const dRecords = records.filter((r) =>
           dEmps.some(
             (e) => String(e.employee_id || e.id) === String(r.employee_id),
@@ -773,9 +778,15 @@ function RecordsTable({
   }, [externalDeptFilter]);
 
   const filtered = useMemo(() => {
+    const hiddenEmployeeIds = new Set(
+      employees
+        .filter((e) => HIDDEN_EMP_STATUSES.includes(e.employment_status))
+        .map((e) => String(e.id)),
+    );
     const lq = q.toLowerCase();
     return enriched.filter(
       (r) =>
+        !hiddenEmployeeIds.has(String(r.employee_db_id || r.employee_id)) &&
         (filterStatus === "All" || r.status === filterStatus) &&
         (filterDept === "All" ||
           String(r.dept_id || "") === String(filterDept)) &&
@@ -786,7 +797,7 @@ function RecordsTable({
           String(r.employee_id).includes(lq) ||
           r.date?.includes(lq)),
     );
-  }, [enriched, q, filterStatus, filterDept, filterMode]);
+  }, [enriched, employees, q, filterStatus, filterDept, filterMode]);
 
   const total = Math.ceil(filtered.length / PAGE_SIZE);
   const rows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);

@@ -1022,8 +1022,8 @@ export default function MyAttendancePage({ employeeId: propEmpId, onBack }) {
         setUser({
           fullName,
           email: employee?.email || "",
-          employeeCode: employee?.employee_id || employee?.id || null,
-          employeeDbId: employee?.id || propEmpId,
+          employeeCode: employee?.id || null,
+          employeeDbId: employee?.employee_id || propEmpId,
           image: employee?.image || "",
           initials: initials || "—",
           role: employee?.role?.name || null,
@@ -1198,7 +1198,7 @@ export default function MyAttendancePage({ employeeId: propEmpId, onBack }) {
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Attendance record & monthly overview
-          </p> 
+          </p>
           {(user.designation || user.role || user.department) && (
             <div className="flex flex-wrap gap-2 mt-2">
               {user.role && (
@@ -1218,7 +1218,7 @@ export default function MyAttendancePage({ employeeId: propEmpId, onBack }) {
           {user.employeeCode && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-500 shadow-sm">
               <User size={12} className="text-gray-400" /> Employee #
-              {user.employeeCode}
+              {user.employeeDbId}
             </div>
           )}
           <button
