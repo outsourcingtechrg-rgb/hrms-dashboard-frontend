@@ -408,4 +408,18 @@ GetAttendanceAdminSummary: (month, department_id) => {
   comment:     (id)  => `${mainOrigin}/tickets/${id}/comments`,
   mgmtAtts:    (id)  => `${mainOrigin}/tickets/management/${id}/attachments`,
   downloadAtt: (aid) => `${mainOrigin}/tickets/management/attachments/${aid}/download`,
+
+// shift Assigner
+
+  // GET    /api/shift-assignments         → list all EmployeeShiftAssignment rows
+  ListAssignments: `${mainOrigin}/shift-assignments`,
+  // POST   /api/shift-assignments         → create new assignment
+  CreateAssignment: `${mainOrigin}/shift-assignments`,
+  // PATCH  /api/shift-assignments/:id     → update (e.g. set effective_to)
+  UpdateAssignment: (id) => `${mainOrigin}/shift-assignments/${id}`,
+  // DELETE /api/shift-assignments/:id     → delete assignment
+  DeleteAssignment: (id) => `${mainOrigin}/shift-assignments/${id}`,
+  // POST   /api/shift-assignments/:id/end → set effective_to to now (early termination)
+  EndAssignment: (id) => `${mainOrigin}/shift-assignments/${id}/end`,
+
 };

@@ -30,6 +30,7 @@ import ResetPassword from "./Pages/Login/ResetPassword";
 import Applications from "./Pages/Applications/Applications"; //leave
 // import LeaveManagementNew from "./Pages/LeaveManagment/LeaveManagementNew"; //leave
 // import LeaveManagement from "./Pages/LeaveManagment/LeaveManagement"; //leave
+import TestFile from "./Pages/testPage/TestFile"; //leave
 import LeaveManagementMain from "./Pages/LeaveManagment/LeaveManagementMain"; //leave - NEW
 // import LeaveBalanceOverview from "./Pages/LeaveManagment/LeaveBalanceOverview"; //leave - Balance Overview
 // hod pages
@@ -182,6 +183,14 @@ function AppContent() {
             }
           />
           <Route
+            path="/test"
+            element={
+              <ProtectedRoute minLevel={1}>
+                <TestFile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/hod-employees"
             element={
               <ProtectedRoute minLevel={6}>
@@ -297,11 +306,14 @@ function AppContent() {
           <Route path="/policy" element={<Policy />} />
           <Route path="/notice" element={<Notice />} />
           <Route path="/kpi" element={<ComingSoon />} />
-          <Route path="/leave-management" element={
-              <ProtectedRoute minLevel={4}>
+          <Route
+            path="/leave-management"
+            element={
+              <ProtectedRoute minLevel={1}>
                 <LeaveManagementMain />
               </ProtectedRoute>
-            }/>
+            }
+          />
           {/* <Route path="/leave-managment" element={<LeaveManagement />} /> */}
 
           <Route path="/reports" element={<ComingSoon />} />

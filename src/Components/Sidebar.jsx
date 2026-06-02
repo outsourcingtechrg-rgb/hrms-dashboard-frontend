@@ -293,7 +293,10 @@ export default function Sidebar({
 
       {/* Mobile overlay */}
       {isOpen && (
-        <div className="hrms-overlay md:hidden" onClick={() => setIsOpen(false)} />
+        <div
+          className="hrms-overlay md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
       )}
 
       <aside
@@ -304,7 +307,10 @@ export default function Sidebar({
         ]
           .filter(Boolean)
           .join(" ")}
-        style={{ transform: isOpen || window.innerWidth >= 768 ? "translateX(0)" : undefined }}
+        style={{
+          transform:
+            isOpen || window.innerWidth >= 768 ? "translateX(0)" : undefined,
+        }}
       >
         {/* Logo + collapse toggle */}
         <div className="hrms-sidebar-logo">
@@ -312,7 +318,10 @@ export default function Sidebar({
             <img src={logo} alt="Company Logo" className="hrms-logo-img" />
           )}
           {collapsed && <div style={{ flex: 1 }} />}
-          <button className="hrms-collapse-btn" onClick={() => setCollapsed(!collapsed)}>
+          <button
+            className="hrms-collapse-btn"
+            onClick={() => setCollapsed(!collapsed)}
+          >
             {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
         </div>
@@ -320,9 +329,9 @@ export default function Sidebar({
         {/* Navigation */}
         <nav className="hrms-sidebar-nav">
           <NavSection title="Main" collapsed={collapsed}>
-            {mainItems.map((item) => (
+            {mainItems.map((item, idx) => (
               <NavItem
-                key={item.label}
+                key={`main-${idx}-${item.label}`}
                 item={item}
                 collapsed={collapsed}
                 onClick={handleNavigate}
@@ -332,9 +341,9 @@ export default function Sidebar({
 
           {myItems.length > 0 && (
             <NavSection title="My" collapsed={collapsed}>
-              {myItems.map((item) => (
+              {myItems.map((item, idx) => (
                 <NavItem
-                  key={item.label}
+                  key={`my-${idx}-${item.label}`}
                   item={item}
                   collapsed={collapsed}
                   onClick={handleNavigate}
@@ -348,7 +357,9 @@ export default function Sidebar({
         <div className="hrms-sidebar-footer">
           <div className="hrms-footer-badge">
             <div className="hrms-footer-dot" />
-            {!collapsed && <span className="hrms-footer-text">System online</span>}
+            {!collapsed && (
+              <span className="hrms-footer-text">System online</span>
+            )}
           </div>
         </div>
       </aside>
@@ -360,7 +371,10 @@ function NavSection({ title, children, collapsed }) {
   return (
     <div>
       {!collapsed && <div className="hrms-section-label">{title}</div>}
-      <ul className="hrms-section-items" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+      <ul
+        className="hrms-section-items"
+        style={{ listStyle: "none", margin: 0, padding: 0 }}
+      >
         {children}
       </ul>
     </div>
@@ -380,8 +394,20 @@ function NavItem({ item, onClick, collapsed }) {
         {!collapsed && (
           <>
             <span className="hrms-nav-label">{item.label}</span>
-            <svg className="hrms-nav-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              className="hrms-nav-arrow"
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+            >
+              <path
+                d="M5 3l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </>
         )}

@@ -440,8 +440,42 @@ function TodayCard({ rec, shift, loading, error, onRetry }) {
 /* ─────────────────────────────────────────
    Summary Section
 ───────────────────────────────────────── */
-function SummarySection({ summary, loading, error, onRetry }) {
-  const rate = summary?.rate ?? 0;
+function SummarySection({ summary, loading, error, onRetry, records, shift }) {
+  /* ── Raw counts from backend ── */
+  const onTimeCount = summary?.present ?? 0; // "Present" status only (on-time employees)
+  const lateCount = summary?.late ?? 0;
+  const earlyCount = summary?.early ?? 0;
+  const absentCount = summary?.absent ?? 0;
+  const leaveCount = summary?.leave ?? 0;
+
+  /* Total days = count all status except Leave (Present + Late + Early + Absent = working days) */
+  const totalDays = onTimeCount + lateCount + earlyCount + absentCount;
+
+  /* Total present days = on-time + late + early (all days employee was in office) */
+  const totalPresentCount = onTimeCount + lateCount + earlyCount;
+
+
+  function countTotalWorkingDays(attendanceData) {
+  const nonWorkingStatuses = ["absent", "leave"];
+
+  return attendanceData.filter(record => {
+    const status = (record.status || "").trim().toLowerCase();
+
+    return !nonWorkingStatuses.includes(status);
+  }).length;
+}
+
+  /* Penalty: every 3 lates or 3 earlies = 1 absent */
+  const latePenalty = Math.floor(lateCount / 3);
+  const earlyPenalty = Math.floor(earlyCount / 3);
+  const totalPenalty = latePenalty + earlyPenalty;
+
+  /* Effective working days = present days minus penalties */
+  const effectiveWorkingDays = Math.max(0, totalPresentCount - totalPenalty);
+
+  const rate =
+    totalDays > 0 ? Math.round((effectiveWorkingDays / totalDays) * 100) : 0;
+
   const rateColor =
     rate >= 90
       ? "text-emerald-600"
@@ -453,40 +487,30 @@ function SummarySection({ summary, loading, error, onRetry }) {
   const rateLabel =
     rate >= 90 ? "Excellent" : rate >= 75 ? "Good" : "Needs Attention";
 
-  const stats = [
-    {
-      key: "Present",
-      val: summary?.present,
-      total: summary?.total_days,
-      bar: "bg-emerald-500",
-      badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      Icon: CheckCircle2,
-    },
-    {
-      key: "Late",
-      val: summary?.late,
-      total: summary?.total_days,
-      bar: "bg-yellow-400",
-      badge: "border-yellow-200 bg-yellow-50 text-yellow-700",
-      Icon: Clock,
-    },
-    {
-      key: "Absent",
-      val: summary?.absent,
-      total: summary?.total_days,
-      bar: "bg-red-400",
-      badge: "border-red-200 bg-red-50 text-red-700",
-      Icon: XCircle,
-    },
-    {
-      key: "Leave",
-      val: summary?.leave,
-      total: summary?.total_days,
-      bar: "bg-slate-400",
-      badge: "border-slate-200 bg-slate-50 text-slate-600",
-      Icon: Calendar,
-    },
-  ];
+  /* Monthly hours - only count days employee was actually present (exclude Absent/Leave) */
+  const totalHours = useMemo(() => {
+    return (records ?? []).reduce((acc, r) => {
+      const status = r.status || "";
+      /* Only count hours for present days (not absent or leave) */
+      if (!r.hours || ["Absent", "Leave"].includes(status)) return acc;
+      const dow = new Date((r.date ?? "") + "T12:00:00").getDay();
+      return dow === 0 || dow === 6 ? acc : acc + r.hours;
+    }, 0);
+  }, [records]);
+
+  /* Expected hours based on shift daily hours × working days */
+  const expectedHours = useMemo(() => {
+    let dailyHours = 9;
+    if (shift?.total_hours) {
+      const mins = toMins(shift.total_hours);
+      if (mins) dailyHours = mins / 60;
+    }
+    /* Use total present days for expected hours, not effective working days */
+    return totalPresentCount * dailyHours;
+  }, [shift, totalPresentCount]);
+
+  const avgHours =
+    totalPresentCount > 0 ? (totalHours / totalPresentCount).toFixed(1) : "—";
 
   if (error && !loading)
     return (
@@ -495,75 +519,230 @@ function SummarySection({ summary, loading, error, onRetry }) {
       </div>
     );
 
+  /* ── Stat card definitions ── */
+  const stats = [
+    {
+      key: "Present",
+      val: totalPresentCount,
+      bar: "bg-emerald-500",
+      badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      Icon: CheckCircle2,
+      note: "Total days in office",
+    },
+    {
+      key: "On Time",
+      val: onTimeCount,
+      bar: "bg-teal-400",
+      badge: "border-teal-200 bg-teal-50 text-teal-700",
+      Icon: CheckCircle2,
+      note: "No late or early",
+    },
+    {
+      key: "Late",
+      val: lateCount,
+      bar: "bg-yellow-400",
+      badge: "border-yellow-200 bg-yellow-50 text-yellow-700",
+      Icon: Clock,
+      note:
+        latePenalty > 0
+          ? `−${latePenalty} day${latePenalty > 1 ? "s" : ""} deducted`
+          : lateCount >= 3
+            ? `${3 - (lateCount % 3 || 3)} more = −1 day`
+            : null,
+    },
+    {
+      key: "Early Out",
+      val: earlyCount,
+      bar: "bg-blue-400",
+      badge: "border-blue-200 bg-blue-50 text-blue-700",
+      Icon: LogOut,
+      note:
+        earlyPenalty > 0
+          ? `−${earlyPenalty} day${earlyPenalty > 1 ? "s" : ""} deducted`
+          : earlyCount >= 3
+            ? `${3 - (earlyCount % 3 || 3)} more = −1 day`
+            : null,
+    },
+    {
+      key: "Absent",
+      val: absentCount,
+      bar: "bg-red-400",
+      badge: "border-red-200 bg-red-50 text-red-700",
+      Icon: XCircle,
+      note: null,
+    },
+    {
+      key: "Leave",
+      val: leaveCount,
+      bar: "bg-slate-400",
+      badge: "border-slate-200 bg-slate-50 text-slate-600",
+      Icon: Calendar,
+      note: null,
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
-      {stats.map(({ key, val, total, bar, badge, Icon }) => {
-        const pct = total && val != null ? Math.round((val / total) * 100) : 0;
-        return (
-          <Card key={key} className="p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+    <div className="space-y-4 mb-5">
+      {/* ── Row 1: 6 stat cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        {stats.map(({ key, val, bar, badge, Icon, note }) => {
+          const pct =
+            totalDays && val != null ? Math.round((val / totalDays) * 100) : 0;
+          return (
+            <Card key={key} className="p-4 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
                 <span
-                  className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${badge}`}
+                  className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${badge}`}
                 >
-                  <Icon size={15} />
+                  <Icon size={13} />
                 </span>
-                <span className="text-sm text-gray-500 font-medium">{key}</span>
+                {loading ? (
+                  <Loader2 size={15} className="att-spin text-blue-400" />
+                ) : (
+                  <span className="text-xl font-bold text-gray-900">
+                    {val ?? "—"}
+                  </span>
+                )}
               </div>
-              {loading ? (
-                <Loader2 size={16} className="att-spin text-blue-400" />
-              ) : (
-                <span className="text-2xl font-bold text-gray-900">
-                  {val ?? "—"}
-                </span>
-              )}
+              <span className="text-xs text-gray-500 font-medium leading-tight">
+                {key}
+              </span>
+              <div>
+                <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+                  <span>of {totalDays ?? "—"} days</span>
+                  <span>{pct}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
+                  <div
+                    className={`h-1 rounded-full transition-all duration-500 ${bar}`}
+                    style={{ width: loading ? "0%" : `${pct}%` }}
+                  />
+                </div>
+                {note && (
+                  <p
+                    className={`text-[10px] mt-1 font-medium ${
+                      note.startsWith("−") ? "text-red-500" : "text-gray-400"
+                    }`}
+                  >
+                    {note}
+                  </p>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* ── Row 2: Total Hours + Attendance Rate ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Total Working Hours */}
+        <Card className="p-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl border border-purple-200 bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
+                <Timer size={15} />
+              </span>
+              <span className="text-sm text-gray-500 font-medium">
+                Total Hours
+              </span>
             </div>
-            <div>
+            {loading ? (
+              <Loader2 size={16} className="att-spin text-blue-400" />
+            ) : (
+              <span className="text-xl font-bold text-purple-700">
+                {fmtHours(totalHours)}
+              </span>
+            )}
+          </div>
+          {!loading && (
+            <>
               <div className="flex justify-between text-[11px] text-gray-400 mb-1 font-medium">
-                <span>of {total ?? "—"} days</span>
-                <span>{pct}%</span>
+                <span>~{avgHours}h avg/day</span>
+                <span>of {fmtHours(expectedHours)} expected</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className={`h-1.5 rounded-full transition-all duration-500 ${bar}`}
-                  style={{ width: loading ? "0%" : `${pct}%` }}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    expectedHours > 0 && totalHours >= expectedHours
+                      ? "bg-emerald-400"
+                      : "bg-purple-400"
+                  }`}
+                  style={{
+                    width:
+                      expectedHours > 0
+                        ? `${Math.min(100, (totalHours / expectedHours) * 100)}%`
+                        : "0%",
+                  }}
                 />
               </div>
-            </div>
-          </Card>
-        );
-      })}
+              {expectedHours > 0 && totalHours < expectedHours && (
+                <p className="text-[10px] text-red-500 font-medium">
+                  {fmtHours(expectedHours - totalHours)} remaining
+                </p>
+              )}
+            </>
+          )}
+        </Card>
 
-      {/* Rate card */}
-      <Card className="p-5 flex flex-col col-span-2 lg:col-span-1">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-500 font-medium">Rate</span>
-          <TrendingUp size={14} className="text-gray-300" />
-        </div>
-        {loading ? (
-          <Loader2 size={18} className="att-spin text-blue-400" />
-        ) : (
-          <>
-            <div className="flex items-end gap-2 mb-2">
-              <span className={`text-3xl font-bold ${rateColor}`}>{rate}%</span>
-              <span className={`text-xs font-semibold mb-0.5 ${rateColor}`}>
-                {rateLabel}
+        {/* Attendance Rate — spans 2 cols */}
+        <Card className="p-5 flex flex-col lg:col-span-2">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-sm text-gray-500 font-medium">
+                Attendance Rate
               </span>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                3 lates = −1 day · 3 early-outs = −1 day from working days
+              </p>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-2 rounded-full transition-all ${rateBar}`}
-                style={{ width: `${rate}%` }}
-              />
-            </div>
-            <div className="flex justify-between text-[10px] text-gray-300 mt-1">
-              <span>0%</span>
-              <span>Target 90%</span>
-              <span>100%</span>
-            </div>
-          </>
-        )}
-      </Card>
+            <TrendingUp size={14} className="text-gray-300" />
+          </div>
+          {loading ? (
+            <Loader2 size={18} className="att-spin text-blue-400" />
+          ) : (
+            <>
+              <div className="flex items-end gap-2 mb-2">
+                <span className={`text-3xl font-bold ${rateColor}`}>
+                  {rate}%
+                </span>
+                <span className={`text-xs font-semibold mb-0.5 ${rateColor}`}>
+                  {rateLabel}
+                </span>
+                {totalPenalty > 0 && (
+                  <span className="text-[10px] text-red-500 font-semibold mb-0.5 ml-1">
+                    ({totalPenalty} day{totalPenalty > 1 ? "s" : ""} penalised)
+                  </span>
+                )}
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all ${rateBar}`}
+                  style={{ width: `${rate}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-300 mt-1">
+                <span>0%</span>
+                <span>Target 90%</span>
+                <span>100%</span>
+              </div>
+              {/* Breakdown pill */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                <span className="text-[10px] px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-500">
+                  {effectiveWorkingDays} effective days
+                </span>
+                <span className="text-[10px] px-2 py-1 bg-gray-50 border border-gray-100 rounded-lg text-gray-500">
+                  {totalDays} total days
+                </span>
+                {totalPenalty > 0 && (
+                  <span className="text-[10px] px-2 py-1 bg-red-50 border border-red-100 rounded-lg text-red-600 font-medium">
+                    −{totalPenalty} penalty days
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

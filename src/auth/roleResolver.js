@@ -73,8 +73,9 @@ const roleSidebarMap = {
       { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false },
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
-      // { label: "Timings", icon: Calendar, path: "/timings", my: false },
+      { label: "Test", icon: Calendar, path: "/test", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
+      { label: "Applications", icon: Ticket, path: "/leave-management", my: false },
       { label: "Tickets", icon: Ticket, path: "/tickets", my: false },
       { label: "Employees", icon: Users, path: "/employees", my: false },
       { label: "Roles", icon: Settings, path: "/roles", my: false },
@@ -93,6 +94,7 @@ const roleSidebarMap = {
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
+      { label: "Applications", icon: Ticket, path: "/leave-management", my: false },
       { label: "Employees", icon: Users, path: "/employees", my: false },
       { label: "Departments", icon: House, path: "/departments", my: false },
       { label: "Reports", icon: FileText, path: "/reports", my: false },
@@ -107,14 +109,14 @@ const roleSidebarMap = {
       { label: "Notices", icon: Megaphone, path: "/notice", my: false },
       { label: "Attendance", icon: Clock, path: "/attendance", my: false },
       { label: "Applications", icon: Ticket, path: "/applications", my: false },
-      { label: "Applications", icon: Ticket, path: "/leaves", my: false },
+      { label: "Applications", icon: Ticket, path: "/leave-management", my: false },
       // { label: "departments", icon: House, path: "/departments", my: false },
       { label: "Employees", icon: Users, path: "/employees", my: false },
       { label: "Reports", icon: FileText, path: "/reports", my: false },
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },
       { label: "KPI", icon: LetterText, path: "/kpi", my: false },
       { label: "Policy", icon: Shield, path: "/policy", my: false },
-      { label: "Leave Management", icon: Calendar, path: "/leaves", my: false },
+      { label: "Leave Management", icon: Calendar, path: "/leave-management", my: false },
         // my section
       ...MY_SECTION
   ],
@@ -129,7 +131,7 @@ const roleSidebarMap = {
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },
       { label: "KPI", icon: LetterText, path: "/kpi", my: false },
       { label: "Policy", icon: Shield, path: "/policy", my: false },
-      { label: "Leave Management", icon: Calendar, path: "/leaves", my: false },
+      { label: "Leave Management", icon: Calendar, path: "/leave-management", my: false },
         // my section
       ...MY_SECTION
   ],
@@ -137,7 +139,7 @@ const roleSidebarMap = {
   5: [
       { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", my: false }, 
       { label: "Finance", icon: LayoutDashboard, path: "/finance", my: false }, 
-      { label: "Leave Management", icon: Calendar, path: "/leaves", my: false },
+      { label: "Leave Management", icon: Calendar, path: "/leave-management", my: false },
         // my section
       ...MY_SECTION
   ],
@@ -155,7 +157,7 @@ const roleSidebarMap = {
       { label: "Training/Courses", icon: GraduationCap, path: "/training", my: false },
       { label: "KPI", icon: LetterText, path: "/kpi", my: false },
       { label: "Policy", icon: Shield, path: "/policy", my: false },
-      { label: "Leave Management", icon: Calendar, path: "/leaves", my: false },
+      { label: "Leave Management", icon: Calendar, path: "/leave-management", my: false },
         // my section
       ...MY_SECTION
   ],
