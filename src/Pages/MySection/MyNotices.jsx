@@ -407,7 +407,7 @@ export default function NoticeBoardPage() {
   const pinnedToShow = showPinnedBanners ? pinned : [];
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-8 py-10 text-gray-900">
+    <div className="min-h-screen ed-page px-4 sm:px-6 lg:px-8 py-10 ">
 
       {/* Header */}
       <header className="mb-7">
@@ -417,7 +417,7 @@ export default function NoticeBoardPage() {
               <Bell size={20} className="text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-black text-gray-900">Notice Board</h1>
+              <h1 className="text-3xl font-black ">Notice Board</h1>
               <p className="text-sm text-gray-400 mt-0.5">Stay informed · {new Date().toDateString()}</p>
             </div>
           </div>

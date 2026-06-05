@@ -9,7 +9,6 @@ import {
 import { resolveUserUI } from "./auth/roleResolver";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import { parseJwt } from "./utils/auth";
-
 import PageRender from "./Pages/PageRender";
 import LoginForm from "./Pages/Login/LoginForm";
 import ForgotPasswordModal from "./Pages/Login/ForgotPasswordModal";

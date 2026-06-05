@@ -1429,6 +1429,8 @@ export default function MyAttendancePage({ employeeId: propEmpId, onBack }) {
         loading={sumLoad}
         error={sumErr}
         onRetry={loadSummary}
+        records={records}
+        shift={shift}       
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

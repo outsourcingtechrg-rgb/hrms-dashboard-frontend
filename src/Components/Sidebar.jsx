@@ -289,6 +289,91 @@ export default function Sidebar({
           font-weight: 500;
           white-space: nowrap;
         }
+
+        /* 🌙 Dark Mode Sidebar */
+        html.dark .hrms-sidebar {
+          background: #111827;
+          border-right-color: #1f2937;
+        }
+
+        html.dark .hrms-sidebar-logo {
+          border-bottom-color: #1f2937;
+        }
+
+        html.dark .hrms-collapse-btn {
+          background: #1f2937;
+          border-color: #374151;
+          color: #9ca3af;
+        }
+
+        html.dark .hrms-collapse-btn:hover {
+          background: #374151;
+          border-color: #4b5563;
+          color: #ef4444;
+        }
+
+        html.dark .hrms-section-label {
+          color: #6b7280;
+        }
+
+        html.dark .hrms-nav-item {
+          border-color: transparent;
+        }
+
+        html.dark .hrms-nav-item:hover {
+          background: #1f2937;
+          border-color: #374151;
+        }
+
+        html.dark .hrms-nav-item:hover .hrms-nav-icon-wrap {
+          background: #ef4444;
+          border-color: #ef4444;
+        }
+
+        html.dark .hrms-nav-item:hover .hrms-nav-label {
+          color: #fca5a5;
+        }
+
+        html.dark .hrms-nav-item.active {
+          background: #1f2937;
+          border-color: #374151;
+        }
+
+        html.dark .hrms-nav-item.active .hrms-nav-icon-wrap {
+          background: #ef4444;
+          border-color: #ef4444;
+        }
+
+        html.dark .hrms-nav-item.active .hrms-nav-label {
+          color: #fca5a5;
+        }
+
+        html.dark .hrms-nav-icon-wrap {
+          background: #1f2937;
+          border-color: #374151;
+          color: #9ca3af;
+        }
+
+        html.dark .hrms-nav-label {
+          color: #e5e7eb;
+        }
+
+        html.dark .hrms-nav-arrow {
+          color: #ef4444;
+        }
+
+        html.dark .hrms-sidebar-footer {
+          border-top-color: #1f2937;
+        }
+
+        html.dark .hrms-footer-badge {
+          background: #0f172a;
+          border-color: #374151;
+        }
+
+        html.dark .hrms-footer-text {
+          color: #9ca3af;
+        }
       `}</style>
 
       {/* Mobile overlay */}

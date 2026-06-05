@@ -11,6 +11,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "./Apis";
 import RetroClock from "./RetroClock";
+import ThemeToggle from "./ThemeToggle";
 
 const ROLE_LABELS = {
   1: "Super Admin",
@@ -554,6 +555,78 @@ export default function Navbar({ setIsOpen, onLogout }) {
         .hrms-logout-btn:active {
           transform: translateY(0);
         }
+
+        /* 🌙 Dark Mode Navbar */
+        html.dark .hrms-navbar {
+          background: linear-gradient(135deg, #111827 0%, #0f172a 100%);
+          border-bottom-color: #1f2937;
+        }
+
+        html.dark .hrms-title-block h1 {
+          background: linear-gradient(135deg, #ffffff 0%, #d32f2f 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+
+        html.dark .hrms-title-block p {
+          color: #ef4444;
+        }
+
+        html.dark .hrms-icon-btn {
+          background: #1f2937;
+          border-color: #374151;
+          color: #9ca3af;
+        }
+
+        html.dark .hrms-icon-btn:hover {
+          background: #374151;
+          border-color: #4b5563;
+          color: #ef4444;
+        }
+
+        html.dark .hrms-profile-btn {
+          background: #1f2937;
+          border-color: #374151;
+        }
+
+        html.dark .hrms-profile-btn:hover {
+          background: #374151;
+          border-color: #4b5563;
+        }
+
+        html.dark .hrms-profile-name {
+          color: #f3f4f6;
+        }
+
+        html.dark .hrms-dropdown {
+          background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+          border-color: #374151;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        html.dark .hrms-info-row {
+          background: #0f172a;
+          border-color: #374151;
+          color: #e5e7eb;
+        }
+
+        html.dark .hrms-info-row:hover {
+          background: #1f2937;
+          border-color: #4b5563;
+        }
+
+        html.dark .hrms-info-label {
+          color: #ef4444;
+        }
+
+        html.dark .hrms-info-value {
+          color: #e5e7eb;
+        }
+
+        html.dark .hrms-dropdown-footer {
+          border-top-color: #374151;
+        }
       `}</style>
 
       <nav className="hrms-navbar">
@@ -599,6 +672,7 @@ export default function Navbar({ setIsOpen, onLogout }) {
 
         {/* Right */}
         <div className="hrms-navbar-right" ref={dropdownRef}>
+          <ThemeToggle />
           <button
             className="hrms-profile-btn"
             onClick={() => setOpen((prev) => !prev)}

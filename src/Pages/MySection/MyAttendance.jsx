@@ -1,27 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Calendar,
-  TrendingUp,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  RefreshCw,
-  X,
-  Search,
-  LogIn,
-  LogOut,
-  Timer,
-  Info,
-  AlertCircle,
-  BarChart2,
-  User,
-  Moon,
-  Sun,
-  Sunset,
-  ArrowLeft,
+  CheckCircle2, XCircle, Clock, Calendar, TrendingUp,
+  ChevronLeft, ChevronRight, Loader2, RefreshCw, X,
+  Search, LogIn, LogOut, Timer, Info, AlertCircle,
+  BarChart2, User, Moon, Sun, Sunset, ArrowLeft,
 } from "lucide-react";
 import { API } from "../../Components/Apis";
 
@@ -44,123 +26,70 @@ const _STYLES = `
   }
 })();
 
-/* ─── JWT helper ─── */
+/* ─── JWT helpers ─── */
 function getEmployeeIdFromToken() {
   try {
     const token = localStorage.getItem("access_token");
     if (!token) return null;
-
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-
     const payload = JSON.parse(atob(base64));
-
-    // ✅ USE EPI (Employee ID)
-    const raw =
-      payload.EPI ??
-      payload.employee_id ??
-      payload.sub ?? // fallback only
-      payload.id ??
-      null;
-
     return payload.EPI;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
-
 function getEmployeeMachineIdFromToken() {
   try {
     const token = localStorage.getItem("access_token");
     if (!token) return null;
-
     const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-
     const payload = JSON.parse(atob(base64));
-
-    // ✅ USE EPI (Employee ID)
-    const raw =
-      payload.EPI ?? payload.employee_id ?? payload.sub ?? payload.id ?? null;
-
     return payload.id;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 /* ─── Time helpers ─── */
-
-/** "HH:MM" or "HH:MM:SS" → 12-hour string */
 function to12(rawTime) {
   if (!rawTime) return "—";
   const t = String(rawTime).slice(0, 5);
   const [hStr, mStr] = t.split(":");
-  const h = parseInt(hStr, 10),
-    m = parseInt(mStr, 10);
+  const h = parseInt(hStr, 10), m = parseInt(mStr, 10);
   if (isNaN(h) || isNaN(m)) return String(rawTime);
   const period = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
-
-/** "HH:MM" or "HH:MM:SS" → total minutes from midnight */
 function toMins(t) {
   if (!t) return null;
   const parts = String(t).split(":");
   const h = parseInt(parts[0], 10);
   const m = parseInt(parts[1], 10);
   const s = parts[2] ? parseInt(parts[2], 10) : 0;
-
   if (isNaN(h) || isNaN(m)) return null;
   return h * 60 + m + s / 60;
 }
-
-/** decimal hours → "Xh Ym" */
 function fmtHours(h) {
   if (h == null) return "—";
-  const hrs = Math.floor(h),
-    min = Math.round((h - hrs) * 60);
+  const hrs = Math.floor(h), min = Math.round((h - hrs) * 60);
   return min > 0 ? `${hrs}h ${min}m` : `${hrs}h`;
 }
-
-/** "HH:MM:SS" shift total_hours → "Xh Ym" */
 function fmtShiftTotal(s) {
   const mins = toMins(s);
   return mins != null ? fmtHours(mins / 60) : null;
 }
-
 function shiftPeriod(startTime) {
   const mins = toMins(startTime);
   if (mins === null) return "day";
-  /* Overnight/evening:  18:00 (1080) – 03:59 (wraps) */
   if (mins >= 18 * 60 || mins < 4 * 60) return "night";
-  /* Afternoon:          12:00 – 17:59 */
   if (mins >= 12 * 60) return "afternoon";
-  /* Day:                04:00 – 11:59 */
   return "day";
 }
 
+/* ─── Shift period meta — now uses CSS var classes ─── */
 const PERIOD_META = {
-  day: {
-    label: "Day Shift",
-    Icon: Sun,
-    color: "text-amber-500",
-    bg: "bg-amber-50 border-amber-200",
-  },
-  afternoon: {
-    label: "Afternoon Shift",
-    Icon: Sunset,
-    color: "text-orange-500",
-    bg: "bg-orange-50 border-orange-200",
-  },
-  night: {
-    label: "Night Shift",
-    Icon: Moon,
-    color: "text-indigo-500",
-    bg: "bg-indigo-50 border-indigo-200",
-  },
+  day:       { label: "Day Shift",       Icon: Sun,    cls: "ed-shift-day",       iconCls: "text-amber-500"  },
+  afternoon: { label: "Afternoon Shift", Icon: Sunset, cls: "ed-shift-afternoon", iconCls: "text-orange-500" },
+  night:     { label: "Night Shift",     Icon: Moon,   cls: "ed-shift-night",     iconCls: "text-indigo-500" },
 };
 
-/* True when a shift's end < start (crosses midnight) */
 function isOvernightShift(shift) {
   if (!shift) return false;
   const s = toMins(shift.shift_start_timing);
@@ -168,38 +97,14 @@ function isOvernightShift(shift) {
   return s != null && e != null && e < s;
 }
 
-/* ─── Status display config ─── */
+/* ─── Status config — CSS var classes ─── */
 const STATUS_CFG = {
-  Present: {
-    badge: "bg-emerald-100 text-emerald-800",
-    dot: "bg-emerald-500",
-    cal: "bg-emerald-400 text-white",
-  },
-  Late: {
-    badge: "bg-yellow-100 text-yellow-800",
-    dot: "bg-yellow-400",
-    cal: "bg-yellow-400 text-white",
-  },
-  Early: {
-    badge: "bg-blue-100 text-blue-800",
-    dot: "bg-blue-400",
-    cal: "bg-blue-400 text-white",
-  },
-  "Late & Early": {
-    badge: "bg-gradient-to-r from-yellow-400 to-blue-500 text-white",
-    dot: "bg-slate-400",
-    cal: "bg-gradient-to-r from-yellow-400 to-blue-500 text-white",
-  },
-  Absent: {
-    badge: "bg-red-100 text-red-700",
-    dot: "bg-red-500",
-    cal: "bg-red-400 text-white",
-  },
-  Leave: {
-    badge: "bg-slate-100 text-slate-600",
-    dot: "bg-slate-400",
-    cal: "bg-slate-400 text-white",
-  },
+  Present:      { badge: "ed-badge-present",  dot: "ed-dot-present",  cal: "ed-cal-present"  },
+  Late:         { badge: "ed-badge-late",     dot: "ed-dot-late",     cal: "ed-cal-late"     },
+  Early:        { badge: "ed-badge-early",    dot: "ed-dot-early",    cal: "ed-cal-early"    },
+  "Late & Early":{ badge: "bg-gradient-to-r from-yellow-400 to-blue-500 text-white", dot: "bg-slate-400", cal: "bg-gradient-to-r from-yellow-400 to-blue-500 text-white" },
+  Absent:       { badge: "ed-badge-absent",   dot: "ed-dot-absent",   cal: "ed-cal-absent"   },
+  Leave:        { badge: "ed-badge-leave",    dot: "ed-dot-leave",    cal: "ed-cal-leave"    },
 };
 
 /* ─── Month options ─── */
@@ -217,47 +122,40 @@ const MONTHS = buildMonths();
 const CURR_MONTH = MONTHS[0].value;
 const TODAY_STR = new Date().toISOString().split("T")[0];
 
-/* ─── Shared primitives ─── */
+/* ─── Primitives ─── */
 function Card({ children, className = "" }) {
   return (
-    <div className={`bg-white rounded-2xl shadow-sm ${className}`}>
+    <div className={`ed-card ${className}`}>
       {children}
     </div>
   );
 }
+
 function ErrMsg({ msg, onRetry }) {
   if (!msg) return null;
   return (
-    <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-      <AlertCircle size={15} className="text-red-500 mt-0.5 shrink-0" />
+    <div className="ed-error flex items-start gap-3 rounded-xl px-4 py-3">
+      <AlertCircle size={15} className="mt-0.5 shrink-0" style={{ color: "var(--error-subtext)" }} />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-red-700">
-          Could not load data
-        </p>
-        <p className="text-xs text-red-400 mt-0.5 wrap-break-word">{msg}</p>
+        <p className="text-xs font-semibold" style={{ color: "var(--error-text)" }}>Could not load data</p>
+        <p className="text-xs mt-0.5 break-words" style={{ color: "var(--error-subtext)" }}>{msg}</p>
       </div>
       {onRetry && (
-        <button
-          onClick={onRetry}
-          className="text-xs font-semibold text-red-600 hover:underline shrink-0"
-        >
+        <button onClick={onRetry} className="text-xs font-semibold shrink-0 hover:underline" style={{ color: "var(--error-text)" }}>
           Retry
         </button>
       )}
     </div>
   );
 }
+
 function NoAuthBanner() {
   return (
-    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-4 mb-5">
-      <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+    <div className="ed-warn flex items-start gap-3 rounded-xl px-4 py-4 mb-5">
+      <AlertCircle size={16} className="mt-0.5 shrink-0" style={{ color: "var(--warn-subtext)" }} />
       <div>
-        <p className="text-sm font-semibold text-amber-800">
-          Not authenticated
-        </p>
-        <p className="text-xs text-amber-700 mt-0.5">
-          No valid access token found. Please log in.
-        </p>
+        <p className="text-sm font-semibold" style={{ color: "var(--warn-text)" }}>Not authenticated</p>
+        <p className="text-xs mt-0.5" style={{ color: "var(--warn-subtext)" }}>No valid access token found. Please log in.</p>
       </div>
     </div>
   );
@@ -267,8 +165,7 @@ function NoAuthBanner() {
    Shift Banner
 ───────────────────────────────────────── */
 function ShiftBanner({ shift, loading }) {
-  if (loading)
-    return <div className="h-10 bg-gray-100 animate-pulse rounded-xl mb-5" />;
+  if (loading) return <div className="h-10 ed-subtle animate-pulse rounded-xl mb-5" />;
   if (!shift) return null;
 
   const period = shiftPeriod(shift.shift_start_timing);
@@ -277,37 +174,27 @@ function ShiftBanner({ shift, loading }) {
   const overnight = isOvernightShift(shift);
 
   return (
-    <div
-      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border mb-5 ${meta.bg}`}
-    >
-      <ShiftIcon size={15} className={meta.color} />
+    <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl mb-5 ${meta.cls}`}>
+      <ShiftIcon size={15} className={meta.iconCls} />
       <div className="flex items-center gap-2 flex-wrap text-xs">
-        <span className={`font-semibold ${meta.color}`}>{meta.label}</span>
-        <span className="text-gray-300">·</span>
-        <span className="text-gray-600 font-medium">{shift.name}</span>
-        <span className="text-gray-300">·</span>
-        <span className="text-gray-500">
+        <span className={`font-semibold ${meta.iconCls}`}>{meta.label}</span>
+        <span style={{ color: "var(--border-focus)" }}>·</span>
+        <span className="font-medium" style={{ color: "var(--text-secondary)" }}>{shift.name}</span>
+        <span style={{ color: "var(--border-focus)" }}>·</span>
+        <span style={{ color: "var(--text-tertiary)" }}>
           {to12(shift.shift_start_timing)} → {to12(shift.shift_end_timing)}
-          {overnight && (
-            <span className="ml-1.5 font-semibold text-indigo-600">
-              (Overnight +1 day)
-            </span>
-          )}
+          {overnight && <span className="ml-1.5 font-semibold text-indigo-600"> (Overnight +1 day)</span>}
         </span>
         {shift.shift_late_on && (
           <>
-            <span className="text-gray-300">·</span>
-            <span className="text-gray-400">
-              Late after {to12(shift.shift_late_on)}
-            </span>
+            <span style={{ color: "var(--border-focus)" }}>·</span>
+            <span style={{ color: "var(--text-tertiary)" }}>Late after {to12(shift.shift_late_on)}</span>
           </>
         )}
         {shift.total_hours && (
           <>
-            <span className="text-gray-300">·</span>
-            <span className="text-gray-400">
-              {fmtShiftTotal(shift.total_hours)} shift
-            </span>
+            <span style={{ color: "var(--border-focus)" }}>·</span>
+            <span style={{ color: "var(--text-tertiary)" }}>{fmtShiftTotal(shift.total_hours)} shift</span>
           </>
         )}
       </div>
@@ -316,257 +203,187 @@ function ShiftBanner({ shift, loading }) {
 }
 
 /* ─────────────────────────────────────────
-   Checkout Countdown Timer
+   Countdown
 ───────────────────────────────────────── */
 function CountdownToCheckout({ rec, shift }) {
   const [remaining, setRemaining] = React.useState(null);
 
   React.useEffect(() => {
-    if (!rec?.in_time || !shift?.total_hours) {
-      setRemaining(null);
-      return;
-    }
-
-    function updateCountdown() {
-      const nowPKT = new Date().toLocaleString("en-US", {
-        timeZone: "Asia/Karachi",
-      });
-
+    if (!rec?.in_time || !shift?.total_hours) { setRemaining(null); return; }
+    function update() {
+      const nowPKT = new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" });
       const now = new Date(nowPKT);
-      const currentHours = now.getHours();
-      const currentMins = now.getMinutes();
-      const currentTotalMins = currentHours * 60 + currentMins;
-
-      // Parse check-in time
-      const [inHStr, inMStr] = String(rec.in_time).split(":");
-      const inTotalMins = parseInt(inHStr, 10) * 60 + parseInt(inMStr, 10);
-
-      // Calculate expected work duration in minutes
-      const [shiftHStr, shiftMStr] = String(shift.total_hours).split(":");
-      const expectedDurationMins =
-        parseInt(shiftHStr, 10) * 60 + parseInt(shiftMStr, 10);
-
-      // Calculate when they should checkout (check-in + expected duration)
-      let checkoutTargetMins = inTotalMins + expectedDurationMins;
-
-      // If checkout time goes past midnight, wrap it
-      if (checkoutTargetMins >= 24 * 60) {
-        checkoutTargetMins -= 24 * 60;
-      }
-
-      let diffMins = checkoutTargetMins - currentTotalMins;
-
-      // If negative, they should have checked out (going to next day checkout)
-      if (diffMins < 0) {
-        diffMins += 24 * 60;
-      }
-
-      if (diffMins <= 0) {
-        setRemaining(null);
-      } else {
-        const hours = Math.floor(diffMins / 60);
-        const mins = diffMins % 60;
-        setRemaining({ hours, mins, totalMins: diffMins });
-      }
+      const currentTotalMins = now.getHours() * 60 + now.getMinutes();
+      const [inH, inM] = String(rec.in_time).split(":").map(Number);
+      const inMins = inH * 60 + inM;
+      const [shH, shM] = String(shift.total_hours).split(":").map(Number);
+      const dur = shH * 60 + shM;
+      let target = inMins + dur;
+      if (target >= 24 * 60) target -= 24 * 60;
+      let diff = target - currentTotalMins;
+      if (diff < 0) diff += 24 * 60;
+      if (diff <= 0) setRemaining(null);
+      else setRemaining({ hours: Math.floor(diff / 60), mins: diff % 60, totalMins: diff });
     }
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 10000); // Update every 10 seconds
-    return () => clearInterval(interval);
+    update();
+    const id = setInterval(update, 10000);
+    return () => clearInterval(id);
   }, [rec, shift]);
 
   if (!remaining) return null;
 
   return (
-    <div className="flex items-center gap-3 bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl px-4 py-3 mb-4">
-      <div className="flex items-center gap-2">
-        <Clock size={16} className="text-blue-600 animate-pulse" />
-        <div>
-          <p className="text-xs uppercase tracking-widest font-semibold text-blue-600 leading-none mb-1">
-            Until Checkout
-          </p>
-          <p className="text-lg font-bold text-gray-900 tabular-nums">
-            {remaining.hours}h {remaining.mins}m
-          </p>
-        </div>
+    //  px-4 py-3 mb-4
+    <div className="ed-countdown flex items-center gap-3 rounded-xl px-4 py-3 mb-4">
+      <Clock size={16} className="animate-pulse" style={{ color: "var(--countdown-text)" }} />
+      <div>
+        <p className="text-xs uppercase tracking-widest font-semibold leading-none mb-1" style={{ color: "var(--countdown-text)" }}>
+          Until Checkout
+        </p>
+        <p className="text-lg font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>
+          {remaining.hours}h {remaining.mins}m
+        </p>
       </div>
       {remaining.totalMins <= 60 && (
-        <span className="ml-auto text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-100 text-red-700 animate-pulse">
+        <span className="ml-auto text-xs font-semibold px-2.5 py-1 rounded-lg ed-badge-absent animate-pulse">
           Approaching
         </span>
       )}
     </div>
   );
 }
+
+/* ─────────────────────────────────────────
+   Today Card
+───────────────────────────────────────── */
 function TodayCard({ rec, shift, loading, error, onRetry }) {
   const cfg = rec ? STATUS_CFG[rec.status] : null;
-  const dayFmt = new Date().toLocaleDateString("default", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const dayFmt = new Date().toLocaleDateString("default", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const period = shift ? shiftPeriod(shift.shift_start_timing) : "day";
   const periodMeta = PERIOD_META[period];
   const overnight = isOvernightShift(shift);
-
-  const expIn = shift?.shift_start_timing
-    ? to12(shift.shift_start_timing)
-    : null;
+  const expIn = shift?.shift_start_timing ? to12(shift.shift_start_timing) : null;
   const expOut = shift?.shift_end_timing ? to12(shift.shift_end_timing) : null;
-  const shiftTotal = shift?.total_hours
-    ? fmtShiftTotal(shift.total_hours)
-    : null;
+  const shiftTotal = shift?.total_hours ? fmtShiftTotal(shift.total_hours) : null;
 
   return (
     <Card className="p-6">
-      {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
-          <p className="text-xs uppercase tracking-widest font-semibold text-gray-400 mb-0.5">
-            Today
-          </p>
-          <h2 className="text-base font-semibold text-gray-900">{dayFmt}</h2>
+          <p className="text-xs uppercase tracking-widest font-semibold mb-0.5" style={{ color: "var(--text-tertiary)" }}>Today</p>
+          <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>{dayFmt}</h2>
           {shift && (
-            <p className={`text-xs mt-0.5 font-medium ${periodMeta.color}`}>
-              {periodMeta.label} · {to12(shift.shift_start_timing)} –{" "}
-              {to12(shift.shift_end_timing)}
-              {overnight && (
-                <span className="ml-1 text-indigo-500 font-semibold">
-                  {" "}
-                  (+1 day)
-                </span>
-              )}
+            <p className={`text-xs mt-0.5 font-medium ${periodMeta.iconCls}`}>
+              {periodMeta.label} · {to12(shift.shift_start_timing)} – {to12(shift.shift_end_timing)}
+              {overnight && <span className="ml-1 font-semibold text-indigo-500"> (+1 day)</span>}
             </p>
           )}
         </div>
         {cfg && (
-          <span
-            className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${cfg.badge}`}
-          >
+          <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${cfg.badge}`}>
             <span className={`w-2 h-2 rounded-full ${cfg.dot}`} /> {rec.status}
           </span>
         )}
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="flex items-center gap-3 py-2">
           <Loader2 size={18} className="att-spin text-blue-400" />
-          <span className="text-sm text-gray-400">
-            Checking today's record…
-          </span>
+          <span className="text-sm" style={{ color: "var(--text-tertiary)" }}>Checking today's record…</span>
         </div>
       )}
 
-      {/* Countdown to checkout (only show if checked in and not yet checked out) */}
-      {!loading && !error && rec && !rec.out_time && (
-        <CountdownToCheckout rec={rec} shift={shift} />
-      )}
-
-      {/* Error */}
+      {!loading && !error && rec && !rec.out_time && <CountdownToCheckout rec={rec} shift={shift} />}
       {!loading && error && <ErrMsg msg={error} onRetry={onRetry} />}
 
-      {/* No record (backend returned null — employee is off-shift or hasn't clocked in) */}
       {!loading && !error && !rec && (
-        <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-          <Clock size={16} className="text-gray-300" />
+        <div className="flex items-center gap-3 ed-subtle rounded-xl px-4 py-3">
+          <Clock size={16} style={{ color: "var(--text-disabled)" }} />
           <div>
-            <p className="text-sm text-gray-400">
-              No attendance record found for today.
-            </p>
+            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No attendance record found for today.</p>
             {expIn && (
-              <p className="text-xs text-gray-400 mt-0.5">
-                Expected check-in:{" "}
-                <span className="font-semibold text-gray-600">{expIn}</span>
-                {overnight && (
-                  <span className="text-gray-400">
-                    {" "}
-                    · out next day at {expOut}
-                  </span>
-                )}
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                Expected check-in: <span className="font-semibold" style={{ color: "var(--text-secondary)" }}>{expIn}</span>
+                {overnight && <span style={{ color: "var(--text-tertiary)" }}> · out next day at {expOut}</span>}
               </p>
             )}
           </div>
         </div>
       )}
 
-      {/* Record */}
       {!loading && !error && rec && (
         <div className="att-slide space-y-4">
-          {/* Overnight info strip */}
           {overnight && rec.in_time && (
-            <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">
+            <div className="ed-shift-night flex items-center gap-2 rounded-xl px-3 py-2">
               <Moon size={13} className="text-indigo-500 shrink-0" />
-              <p className="text-xs text-indigo-700 font-medium">
-                Night shift — started{" "}
-                <span className="font-bold">{rec.date}</span>
-                {rec.out_time ? (
-                  <>, ends next calendar day</>
-                ) : (
-                  <>, still in progress</>
-                )}
+              <p className="text-xs font-medium text-indigo-700">
+                Night shift — started <span className="font-bold">{rec.date}</span>
+                {rec.out_time ? <>, ends next calendar day</> : <>, still in progress</>}
               </p>
             </div>
           )}
 
-          {/* ✅ in_time = Check In,  out_time = Check Out — never swapped */}
           <div className="grid grid-cols-3 gap-3">
             {[
-              {
-                label: "Check In",
-                value: to12(rec.in_time), // ← punch False (IN)
-                sub: expIn ? `Expected ${expIn}` : null,
-                Icon: LogIn,
-                bg: "bg-emerald-50",
-                ic: "text-emerald-600",
-              },
-              {
-                label: "Check Out",
-                value: to12(rec.out_time), // ← punch True (OUT)
-                sub: expOut ? `Expected ${expOut}` : null,
-                Icon: LogOut,
-                bg: "bg-red-50",
-                ic: "text-red-500",
-              },
-              {
-                label: "Hours Worked",
-                value: fmtHours(rec.hours), // ← backend computed
-                sub: shiftTotal ? `Shift ${shiftTotal}` : null,
-                Icon: Timer,
-                bg: "bg-blue-50",
-                ic: "text-blue-600",
-              },
+              { label: "Check In",      value: to12(rec.in_time),   sub: expIn  ? `Expected ${expIn}`  : null, Icon: LogIn,  bg: "ed-badge-present", ic: "text-emerald-600" },
+              { label: "Check Out",     value: to12(rec.out_time),  sub: expOut ? `Expected ${expOut}` : null, Icon: LogOut, bg: "ed-badge-absent",  ic: "text-red-500"     },
+              { label: "Hours Worked",  value: fmtHours(rec.hours), sub: shiftTotal ? `Shift ${shiftTotal}` : null, Icon: Timer, bg: "bg-blue-50",  ic: "text-blue-600"    },
             ].map(({ label, value, sub, Icon, bg, ic }) => (
-              <div
-                key={label}
-                className={`flex flex-col items-center gap-1.5 rounded-xl py-4 px-2 ${bg}`}
-              >
-                <div className="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center">
+              <div key={label} className={`flex flex-col items-center gap-1.5 rounded-xl py-4 px-2 ${bg}`}>
+                <div className="w-9 h-9 ed-card rounded-lg shadow-sm flex items-center justify-center">
                   <Icon size={16} className={ic} />
                 </div>
-                <span className="text-[10px] uppercase tracking-widest font-semibold text-gray-400 text-center leading-tight">
+                <span className="text-[10px] uppercase tracking-widest font-semibold text-center leading-tight" style={{ color: "var(--text-tertiary)" }}>
                   {label}
                 </span>
-                <span className="text-sm font-bold text-gray-900 tabular-nums">
-                  {value}
-                </span>
-                {sub && (
-                  <span className="text-[10px] text-gray-400 text-center leading-tight">
-                    {sub}
-                  </span>
-                )}
+                <span className="text-sm font-bold tabular-nums" style={{ color: "var(--text-primary)" }}>{value}</span>
+                {sub && <span className="text-[10px] text-center leading-tight" style={{ color: "var(--text-tertiary)" }}>{sub}</span>}
               </div>
             ))}
           </div>
 
           {rec.note && (
-            <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
-              <Info size={14} className="text-amber-500 shrink-0" />
-              <p className="text-xs text-amber-700">{rec.note}</p>
+            <div className="flex items-center gap-2.5 ed-warn rounded-xl px-3 py-2.5">
+              <Info size={14} className="shrink-0" style={{ color: "var(--warn-subtext)" }} />
+              <p className="text-xs" style={{ color: "var(--warn-text)" }}>{rec.note}</p>
             </div>
           )}
         </div>
+      )}
+    </Card>
+  );
+}
+
+/* ─────────────────────────────────────────
+   Rate Card
+───────────────────────────────────────── */
+function RateCard({ summary, loading }) {
+  const rate = summary?.rate ?? 0;
+  const rateColor = rate >= 90 ? "text-emerald-600" : rate >= 75 ? "text-amber-500" : "text-red-500";
+  const rateBar   = rate >= 90 ? "bg-emerald-500"   : rate >= 75 ? "bg-amber-400"   : "bg-red-500";
+  const rateLabel = rate >= 90 ? "Excellent"         : rate >= 75 ? "Good"            : "Needs Attention";
+
+  return (
+    <Card className="p-5 flex flex-col h-full">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Rate</span>
+        <TrendingUp size={14} style={{ color: "var(--text-disabled)" }} />
+      </div>
+      {loading ? (
+        <Loader2 size={18} className="att-spin text-blue-400" />
+      ) : (
+        <>
+          <div className="flex items-end gap-2 mb-2">
+            <span className={`text-3xl font-bold ${rateColor}`}>{rate}%</span>
+            <span className={`text-xs font-semibold mb-0.5 ${rateColor}`}>{rateLabel}</span>
+          </div>
+          <div className="ed-track w-full h-2">
+            <div className={`h-2 rounded-full transition-all ${rateBar}`} style={{ width: `${rate}%` }} />
+          </div>
+          <div className="flex justify-between text-[10px] mt-1" style={{ color: "var(--text-disabled)" }}>
+            <span>0%</span><span>Target 90%</span><span>100%</span>
+          </div>
+        </>
       )}
     </Card>
   );
@@ -575,264 +392,114 @@ function TodayCard({ rec, shift, loading, error, onRetry }) {
 /* ─────────────────────────────────────────
    Summary Section
 ───────────────────────────────────────── */
-function RateCard({ summary, loading }) {
-  const rate = summary?.rate ?? 0;
-  const rateColor =
-    rate >= 90
-      ? "text-emerald-600"
-      : rate >= 75
-        ? "text-amber-500"
-        : "text-red-500";
-  const rateBar =
-    rate >= 90 ? "bg-emerald-500" : rate >= 75 ? "bg-amber-400" : "bg-red-500";
-  const rateLabel =
-    rate >= 90 ? "Excellent" : rate >= 75 ? "Good" : "Needs Attention";
-
-  return (
-    <Card className="p-5 flex flex-col h-full">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-sm text-gray-500 font-medium">Rate</span>
-        <TrendingUp size={14} className="text-gray-300" />
-      </div>
-      {loading ? (
-        <Loader2 size={18} className="att-spin text-blue-400" />
-      ) : (
-        <>
-          <div className="flex items-end gap-2 mb-2">
-            <span className={`text-3xl font-bold ${rateColor}`}>{rate}%</span>
-            <span className={`text-xs font-semibold mb-0.5 ${rateColor}`}>
-              {rateLabel}
-            </span>
-          </div>
-          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-2 rounded-full transition-all ${rateBar}`}
-              style={{ width: `${rate}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-[10px] text-gray-300 mt-1">
-            <span>0%</span>
-            <span>Target 90%</span>
-            <span>100%</span>
-          </div>
-        </>
-      )}
-    </Card>
-  );
-}
-
 function SummarySection({ summary, loading, error, onRetry, records, shift }) {
-  const rate = summary?.rate ?? 0;
-  const rateColor =
-    rate >= 90
-      ? "text-emerald-600"
-      : rate >= 75
-        ? "text-amber-500"
-        : "text-red-500";
-  const rateBar =
-    rate >= 90 ? "bg-emerald-500" : rate >= 75 ? "bg-amber-400" : "bg-red-500";
-  const rateLabel =
-    rate >= 90 ? "Excellent" : rate >= 75 ? "Good" : "Needs Attention";
+  const monthlyHours = useMemo(() => records.reduce((total, r) => {
+    if (!r.date || !r.hours) return total;
+    const dow = new Date(r.date + "T12:00:00").getDay();
+    return (dow === 0 || dow === 6) ? total : total + r.hours;
+  }, 0), [records]);
 
-  // Calculate monthly hours from records (excluding weekends)
-  const monthlyHours = useMemo(() => {
-    return records.reduce((total, r) => {
-      if (!r.date || !r.hours) return total;
-      // Check if it's a weekend (0 = Sunday, 6 = Saturday)
-      const dow = new Date(r.date + "T12:00:00").getDay();
-      const isWeekend = dow === 0 || dow === 6;
-      // Only count weekday hours
-      return isWeekend ? total : total + r.hours;
-    }, 0);
-  }, [records]);
-
-  // Calculate expected monthly hours based on working days (excluding weekends)
   const expectedMonthlyHours = useMemo(() => {
     if (!summary?.total_days && records.length === 0) return 0;
-
-    // Get daily hours from shift.total_hours (HH:MM:SS format)
-    let dailyHours = 9; // default fallback
+    let dailyHours = 9;
     if (shift?.total_hours) {
       const mins = toMins(shift.total_hours);
       dailyHours = mins ? mins / 60 : 9;
     } else if (summary?.shift_duration) {
       const [hStr, mStr] = String(summary.shift_duration).split(":");
-      const h = parseInt(hStr, 10);
-      const m = parseInt(mStr, 10);
-      dailyHours = h + m / 60;
+      dailyHours = parseInt(hStr, 10) + parseInt(mStr, 10) / 60;
     }
-
-    // Count working days (Monday-Friday) from records
-    // This includes ALL days in the selected month, whether it's current or past
     const workingDays = records.reduce((count, r) => {
       if (!r.date) return count;
       const dow = new Date(r.date + "T12:00:00").getDay();
-      const isWeekend = dow === 0 || dow === 6;
-      return isWeekend ? count : count + 1;
+      return (dow === 0 || dow === 6) ? count : count + 1;
     }, 0);
-
     return workingDays > 0 ? workingDays * dailyHours : summary.total_days * 8;
   }, [summary, records, shift]);
 
   const stats = [
-    {
-      key: "Present",
-      val: summary?.present,
-      total: summary?.total_days,
-      bar: "bg-emerald-500",
-      badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-      Icon: CheckCircle2,
-    },
-    {
-      key: "Late",
-      val: summary?.late,
-      total: summary?.total_days,
-      bar: "bg-yellow-400",
-      badge: "border-yellow-200 bg-yellow-50 text-yellow-700",
-      Icon: Clock,
-    },
-    {
-      key: "Absent",
-      val: summary?.absent,
-      total: summary?.total_days,
-      bar: "bg-red-400",
-      badge: "border-red-200 bg-red-50 text-red-700",
-      Icon: XCircle,
-    },
-    {
-      key: "Early",
-      val: summary?.early,
-      total: summary?.total_days,
-      bar: "bg-blue-400",
-      badge: "border-blue-200 bg-blue-50 text-blue-700",
-      Icon: Clock,
-    },
-    {
-      key: "Leave",
-      val: summary?.leave,
-      total: summary?.total_days,
-      bar: "bg-slate-400",
-      badge: "border-slate-200 bg-slate-50 text-slate-600",
-      Icon: Calendar,
-    },
+    { key: "Present", val: summary?.present, bar: "bg-emerald-500", badge: "ed-badge-present", Icon: CheckCircle2 },
+    { key: "Late",    val: summary?.late,    bar: "bg-yellow-400",  badge: "ed-badge-late",    Icon: Clock        },
+    { key: "Absent",  val: summary?.absent,  bar: "bg-red-400",     badge: "ed-badge-absent",  Icon: XCircle      },
+    { key: "Early",   val: summary?.early,   bar: "bg-blue-400",    badge: "ed-badge-early",   Icon: Clock        },
+    { key: "Leave",   val: summary?.leave,   bar: "bg-slate-400",   badge: "ed-badge-leave",   Icon: Calendar     },
   ];
 
-  if (error && !loading)
-    return (
-      <div className="mb-5">
-        <ErrMsg msg={error} onRetry={onRetry} />
-      </div>
-    );
+  if (error && !loading) return <div className="mb-5"><ErrMsg msg={error} onRetry={onRetry} /></div>;
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
-      {stats.map(({ key, val, total, bar, badge, Icon }) => {
+      {stats.map(({ key, val, bar, badge, Icon }) => {
+        const total = summary?.total_days;
         const pct = total && val != null ? Math.round((val / total) * 100) : 0;
         return (
           <Card key={key} className="p-5 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span
-                  className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${badge}`}
-                >
+                <span className={`w-8 h-8 rounded-xl border flex items-center justify-center shrink-0 ${badge}`}>
                   <Icon size={15} />
                 </span>
-                <span className="text-sm text-gray-500 font-medium">{key}</span>
+                <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>{key}</span>
               </div>
-              {loading ? (
-                <Loader2 size={16} className="att-spin text-blue-400" />
-              ) : (
-                <span className="text-2xl font-bold text-gray-900">
-                  {val ?? "—"}
-                </span>
-              )}
+              {loading
+                ? <Loader2 size={16} className="att-spin text-blue-400" />
+                : <span className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>{val ?? "—"}</span>
+              }
             </div>
             <div>
-              <div className="flex justify-between text-[11px] text-gray-400 mb-1 font-medium">
+              <div className="flex justify-between text-[11px] mb-1 font-medium" style={{ color: "var(--text-tertiary)" }}>
                 <span>of {total ?? "—"} days</span>
                 <span>{pct}%</span>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-500 ${bar}`}
-                  style={{ width: loading ? "0%" : `${pct}%` }}
-                />
+              <div className="ed-track w-full h-1.5">
+                <div className={`h-1.5 rounded-full transition-all duration-500 ${bar}`} style={{ width: loading ? "0%" : `${pct}%` }} />
               </div>
             </div>
           </Card>
         );
       })}
 
-      {/* Monthly Hours Card */}
+      {/* Monthly Hours */}
       <Card className="p-5 flex flex-col col-span-1">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm text-gray-500 font-medium">
-            Monthly Hours
-          </span>
-          <Timer size={14} className="text-gray-400" />
+          <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Monthly Hours</span>
+          <Timer size={14} style={{ color: "var(--text-tertiary)" }} />
         </div>
         {loading ? (
           <Loader2 size={18} className="att-spin text-blue-400" />
         ) : (
           <>
-            {/* Hours completed vs expected */}
             <div className="mb-3">
               <div className="flex items-baseline gap-1 mb-1">
-                <span
-                  className={`text-3xl font-bold tabular-nums ${
-                    monthlyHours < expectedMonthlyHours
-                      ? "text-red-600"
-                      : "text-blue-600"
-                  }`}
-                >
+                <span className={`text-3xl font-bold tabular-nums ${monthlyHours < expectedMonthlyHours ? "text-red-600" : "text-blue-600"}`}>
                   {fmtHours(monthlyHours)}
                 </span>
-                <span className="text-xs text-gray-400 font-medium">
-                  / {fmtHours(expectedMonthlyHours)}
-                </span>
+                <span className="text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>/ {fmtHours(expectedMonthlyHours)}</span>
               </div>
-              <p className="text-xs text-gray-400 mb-2">
-                {expectedMonthlyHours > 0
-                  ? `${Math.round((monthlyHours / expectedMonthlyHours) * 100)}% complete`
-                  : "No target set"}
+              <p className="text-xs mb-2" style={{ color: "var(--text-tertiary)" }}>
+                {expectedMonthlyHours > 0 ? `${Math.round((monthlyHours / expectedMonthlyHours) * 100)}% complete` : "No target set"}
               </p>
             </div>
-
-            {/* Progress bar */}
             {expectedMonthlyHours > 0 && (
-              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div className="ed-track w-full h-2">
                 <div
-                  className={`h-2 rounded-full transition-all duration-500 ${
-                    monthlyHours < expectedMonthlyHours
-                      ? "bg-red-500"
-                      : "bg-emerald-500"
-                  }`}
-                  style={{
-                    width: `${Math.min(
-                      (monthlyHours / expectedMonthlyHours) * 100,
-                      100,
-                    )}%`,
-                  }}
+                  className={`h-2 rounded-full transition-all duration-500 ${monthlyHours < expectedMonthlyHours ? "bg-red-500" : "bg-emerald-500"}`}
+                  style={{ width: `${Math.min((monthlyHours / expectedMonthlyHours) * 100, 100)}%` }}
                 />
               </div>
             )}
-
-            {/* Status */}
             {monthlyHours < expectedMonthlyHours && (
-              <div className="flex items-center gap-2 mt-3 px-2.5 py-1.5 bg-red-50 rounded-lg border border-red-100">
-                <AlertCircle size={12} className="text-red-600 shrink-0" />
-                <span className="text-xs font-semibold text-red-700">
+              <div className="flex items-center gap-2 mt-3 px-2.5 py-1.5 ed-badge-absent rounded-lg">
+                <AlertCircle size={12} className="shrink-0" style={{ color: "var(--absent-text)" }} />
+                <span className="text-xs font-semibold" style={{ color: "var(--absent-text)" }}>
                   {fmtHours(expectedMonthlyHours - monthlyHours)} remaining
                 </span>
               </div>
             )}
-
             {monthlyHours >= expectedMonthlyHours && (
-              <div className="flex items-center gap-2 mt-3 px-2.5 py-1.5 bg-emerald-50 rounded-lg border border-emerald-100">
-                <CheckCircle2 size={12} className="text-emerald-600 shrink-0" />
-                <span className="text-xs font-semibold text-emerald-700">
-                  Target completed ✓
-                </span>
+              <div className="flex items-center gap-2 mt-3 px-2.5 py-1.5 ed-badge-present rounded-lg">
+                <CheckCircle2 size={12} className="shrink-0" style={{ color: "var(--present-text)" }} />
+                <span className="text-xs font-semibold" style={{ color: "var(--present-text)" }}>Target completed ✓</span>
               </div>
             )}
           </>
@@ -850,71 +517,49 @@ function CalHeatmap({ records, month }) {
   const firstDay = new Date(yr, mo - 1, 1).getDay();
   const daysInMo = new Date(yr, mo, 0).getDate();
 
-  /* Each record.date is the IN-punch date — use directly */
   const map = useMemo(() => {
     const m = {};
-    records.forEach((r) => {
-      if (r.date) m[r.date] = r.status;
-    });
+    records.forEach((r) => { if (r.date) m[r.date] = r.status; });
     return m;
   }, [records]);
 
-  const DAY_HDR = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const DAY_HDR = ["Su","Mo","Tu","We","Th","Fr","Sa"];
 
   function cellCls(day) {
-    const date = `${yr}-${String(mo).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const date = `${yr}-${String(mo).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
     const dow = new Date(date + "T12:00:00").getDay();
     const wknd = dow === 0 || dow === 6;
     const st = map[date];
     const isToday = date === TODAY_STR;
     const base = st
-      ? STATUS_CFG[st]?.cal || "bg-gray-100 text-gray-400"
-      : wknd
-        ? "bg-gray-50 text-gray-300 border border-gray-100"
-        : "bg-gray-100 text-gray-400";
-    return `${base} ${isToday ? "ring-2 ring-offset-1 ring-blue-500" : ""}`;
+      ? STATUS_CFG[st]?.cal || "ed-subtle"
+      : wknd ? "ed-subtle opacity-50" : "ed-subtle";
+    return `${base}${isToday ? " ring-2 ring-offset-1 ring-blue-500" : ""}`;
   }
 
   return (
     <Card className="p-5">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-gray-500">Monthly Heatmap</h3>
+        <h3 className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Monthly Heatmap</h3>
         <div className="flex items-center gap-3 flex-wrap">
-          {[
-            ["Present", "bg-emerald-400"],
-            ["Late", "bg-yellow-400"],
-            ["Ealrly", "bg-blue-400"],
-            ["Absent", "bg-red-400"],
-            ["Leave", "bg-slate-400"],
-            [
-              "Late & Early",
-              "bg-gradient-to-r from-yellow-400 to-blue-500 text-white",
-            ],
-          ].map(([l, c]) => (
+          {[["Present","ed-cal-present"],["Late","ed-cal-late"],["Early","ed-cal-early"],["Absent","ed-cal-absent"],["Leave","ed-cal-leave"]].map(([l, c]) => (
             <div key={l} className="flex items-center gap-1">
               <span className={`w-2.5 h-2.5 rounded-sm ${c}`} />
-              <span className="text-[10px] text-gray-400">{l}</span>
+              <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{l}</span>
             </div>
           ))}
         </div>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-1">
         {DAY_HDR.map((l) => (
-          <div
-            key={l}
-            className="text-[10px] font-semibold text-center text-gray-400 py-0.5"
-          >
-            {l}
-          </div>
+          <div key={l} className="text-[10px] font-semibold text-center py-0.5" style={{ color: "var(--text-tertiary)" }}>{l}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1">
-        {Array.from({ length: firstDay }, (_, i) => (
-          <div key={`e${i}`} />
-        ))}
+        {Array.from({ length: firstDay }, (_, i) => <div key={`e${i}`} />)}
         {Array.from({ length: daysInMo }, (_, i) => {
           const d = i + 1;
-          const date = `${yr}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const date = `${yr}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
           const st = map[date];
           return (
             <div
@@ -931,36 +576,23 @@ function CalHeatmap({ records, month }) {
   );
 }
 
-//  Records Table
-
+/* ─────────────────────────────────────────
+   Records Table
+───────────────────────────────────────── */
 const PAGE_SIZE = 10;
 
-function RecordsTable({
-  records,
-  loading,
-  error,
-  onRetry,
-  month,
-  onMonthChange,
-  shift,
-}) {
+function RecordsTable({ records, loading, error, onRetry, month, onMonthChange, shift }) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("All");
   const [page, setPage] = useState(1);
-
-  const reset = (fn) => {
-    fn();
-    setPage(1);
-  };
-
+  const reset = (fn) => { fn(); setPage(1); };
   const overnight = isOvernightShift(shift);
 
   const filtered = useMemo(() => {
     const lq = q.toLowerCase();
-    return records.filter(
-      (r) =>
-        (status === "All" || r.status === status) &&
-        (!lq || r.date?.includes(lq) || r.status?.toLowerCase().includes(lq)),
+    return records.filter((r) =>
+      (status === "All" || r.status === status) &&
+      (!lq || r.date?.includes(lq) || r.status?.toLowerCase().includes(lq))
     );
   }, [records, q, status]);
 
@@ -972,58 +604,37 @@ function RecordsTable({
     <Card className="p-6">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
-        <h3 className="text-sm font-medium text-gray-500 flex-1 min-w-20">
-          Records{" "}
-          {!loading && (
-            <span className="text-gray-400 font-normal">
-              ({filtered.length})
-            </span>
-          )}
+        <h3 className="text-sm font-medium flex-1 min-w-20" style={{ color: "var(--text-secondary)" }}>
+          Records {!loading && <span style={{ color: "var(--text-tertiary)" }}>({filtered.length})</span>}
         </h3>
         <select
           value={month}
-          onChange={(e) => {
-            onMonthChange(e.target.value);
-            setPage(1);
-          }}
-          className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-gray-400 cursor-pointer text-gray-700"
+          onChange={(e) => { onMonthChange(e.target.value); setPage(1); }}
+          className="text-sm ed-input px-3 py-1.5 outline-none cursor-pointer"
         >
-          {MONTHS.map((m) => (
-            <option key={m.value} value={m.value}>
-              {m.label}
-            </option>
-          ))}
+          {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
         <div className="relative">
-          <Search
-            size={12}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-          />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--text-tertiary)" }} />
           <input
             value={q}
             onChange={(e) => reset(() => setQ(e.target.value))}
             placeholder="Search…"
-            className="pl-7 pr-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg outline-none w-28 focus:border-gray-400 transition"
+            className="pl-7 pr-2 py-1.5 text-xs ed-input outline-none w-28 transition"
           />
         </div>
         <select
           value={status}
           onChange={(e) => reset(() => setStatus(e.target.value))}
-          className="text-xs bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer text-gray-700"
+          className="text-xs ed-input px-2.5 py-1.5 outline-none cursor-pointer"
         >
           <option value="All">All Statuses</option>
-          {["Present", "Late", "Absent", "Leave"].map((s) => (
-            <option key={s}>{s}</option>
-          ))}
+          {["Present","Late","Absent","Leave"].map((s) => <option key={s}>{s}</option>)}
         </select>
         {pills.length > 0 && (
           <button
-            onClick={() => {
-              setQ("");
-              setStatus("All");
-              setPage(1);
-            }}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 px-2 py-1 rounded-lg hover:bg-red-50 transition"
+            onClick={() => { setQ(""); setStatus("All"); setPage(1); }}
+            className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition ed-badge-absent"
           >
             <X size={11} /> Clear
           </button>
@@ -1033,18 +644,10 @@ function RecordsTable({
       {pills.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {pills.map((p) => (
-            <span
-              key={p}
-              className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-gray-900 text-white text-[11px] font-medium rounded-full"
-            >
+            <span key={p} className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-medium rounded-full"
+              style={{ background: "var(--text-primary)", color: "var(--bg-card)" }}>
               {p}
-              <button
-                onClick={() => {
-                  if (p === status) reset(() => setStatus("All"));
-                  else reset(() => setQ(""));
-                }}
-                className="opacity-60 hover:opacity-100"
-              >
+              <button onClick={() => { if (p === status) reset(() => setStatus("All")); else reset(() => setQ("")); }} className="opacity-60 hover:opacity-100">
                 <X size={9} />
               </button>
             </span>
@@ -1052,28 +655,15 @@ function RecordsTable({
         </div>
       )}
 
-      {error && !loading && (
-        <div className="mb-4">
-          <ErrMsg msg={error} onRetry={onRetry} />
-        </div>
-      )}
+      {error && !loading && <div className="mb-4"><ErrMsg msg={error} onRetry={onRetry} /></div>}
 
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm border-collapse">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-100">
-              {[
-                ["Date", "text-left"],
-                ["Day", "text-center"],
-                ["Status", "text-center"],
-                ["Check In", "text-center"],
-                ["Check Out", "text-center"],
-                ["Hours", "text-center"],
-              ].map(([h, a]) => (
-                <th
-                  key={h}
-                  className={`py-3 px-4 text-[11px] font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap ${a}`}
-                >
+            <tr className="ed-table-head border-b ed-table-border">
+              {[["Date","text-left"],["Day","text-center"],["Status","text-center"],["Check In","text-center"],["Check Out","text-center"],["Hours","text-center"]].map(([h, a]) => (
+                <th key={h} className={`py-3 px-4 text-[11px] font-semibold uppercase tracking-wider whitespace-nowrap ${a}`}
+                  style={{ color: "var(--text-tertiary)" }}>
                   {h}
                 </th>
               ))}
@@ -1081,140 +671,86 @@ function RecordsTable({
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={7} className="py-16 text-center">
-                  <Loader2
-                    size={24}
-                    className="mx-auto att-spin text-blue-400 mb-3"
-                  />
-                  <p className="text-sm text-gray-400">Loading records…</p>
-                </td>
-              </tr>
+              <tr><td colSpan={7} className="py-16 text-center">
+                <Loader2 size={24} className="mx-auto att-spin text-blue-400 mb-3" />
+                <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Loading records…</p>
+              </td></tr>
             ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="py-16 text-center">
-                  <BarChart2 size={28} className="mx-auto mb-3 text-gray-200" />
-                  <p className="text-sm text-gray-400">No records found.</p>
-                </td>
-              </tr>
-            ) : (
-              rows.map((r, i) => {
-                const cfg = STATUS_CFG[r.status] || {};
-                const dObj = new Date(r.date + "T12:00:00");
-                const dName = dObj.toLocaleDateString("default", {
-                  weekday: "short",
-                });
-                const dFmt = dObj.toLocaleDateString("default", {
-                  month: "short",
-                  day: "numeric",
-                });
-                const isWknd = [0, 6].includes(dObj.getDay());
+              <tr><td colSpan={7} className="py-16 text-center">
+                <BarChart2 size={28} className="mx-auto mb-3" style={{ color: "var(--text-disabled)" }} />
+                <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>No records found.</p>
+              </td></tr>
+            ) : rows.map((r, i) => {
+              const cfg = STATUS_CFG[r.status] || {};
+              const dObj = new Date(r.date + "T12:00:00");
+              const dName = dObj.toLocaleDateString("default", { weekday: "short" });
+              const dFmt  = dObj.toLocaleDateString("default", { month: "short", day: "numeric" });
+              const isWknd = [0,6].includes(dObj.getDay());
+              const outCrossed = overnight && r.in_time && r.out_time && (toMins(r.out_time) ?? 9999) < (toMins(r.in_time) ?? 0);
 
-                /*
-                 * Overnight indicator: out_time exists AND
-                 * its minutes < in_time minutes (crossed midnight).
-                 * Backend already computed hours correctly.
-                 */
-                const outCrossedMidnight =
-                  overnight &&
-                  r.in_time &&
-                  r.out_time &&
-                  (toMins(r.out_time) ?? 9999) < (toMins(r.in_time) ?? 0);
-
-                return (
-                  <tr
-                    key={`${r.date}-${i}`}
-                    className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"} border-b border-gray-50 last:border-b-0 hover:bg-blue-50/30 transition ${isWknd ? "opacity-50" : ""}`}
-                  >
-                    {/* Date — always the IN-punch date from backend */}
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <div>
-                          <p className="font-semibold text-gray-900">{dFmt}</p>
-                          <p className="text-xs text-gray-400">{r.date}</p>
-                        </div>
-                        {outCrossedMidnight && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 shrink-0">
-                            <Moon size={9} />
-                            +1
-                          </span>
-                        )}
+              return (
+                <tr key={`${r.date}-${i}`}
+                  className={`border-b ed-table-border last:border-b-0 transition ${isWknd ? "opacity-50" : ""}`}
+                  style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--table-row-alt)" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "var(--table-row-hover)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = i % 2 === 0 ? "var(--bg-card)" : "var(--table-row-alt)"}
+                >
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <div>
+                        <p className="font-semibold" style={{ color: "var(--text-primary)" }}>{dFmt}</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{r.date}</p>
                       </div>
-                    </td>
-
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded-lg ${isWknd ? "bg-gray-100 text-gray-400" : "bg-blue-50 text-blue-700"}`}
-                      >
-                        {dName}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.badge || "bg-gray-100 text-gray-600"}`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${cfg.dot || "bg-gray-400"}`}
-                        />
-                        {r.status}
-                      </span>
-                    </td>
-
-                    {/* Check In — in_time from backend (punch False) */}
-                    <td className="py-3 px-4 text-center">
-                      <p className="text-sm font-medium text-gray-700 tabular-nums">
-                        {to12(r.in_time)}
-                      </p>
-                      <p className="text-[10px] text-gray-400">{r.date}</p>
-                    </td>
-
-                    {/* Check Out — out_time from backend (punch True), may be next day */}
-                    <td className="py-3 px-4 text-center">
-                      <p className="text-sm font-medium text-gray-700 tabular-nums">
-                        {to12(r.out_time)}
-                      </p>
-                      {outCrossedMidnight ? (
-                        <p className="text-[10px] text-indigo-500 font-medium">
-                          next day
-                        </p>
-                      ) : (
-                        <p className="text-[10px] text-gray-400">{r.date}</p>
+                      {outCrossed && (
+                        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md ed-shift-night shrink-0">
+                          <Moon size={9} />+1
+                        </span>
                       )}
-                    </td>
-
-                    {/* Hours — backend computed cross-midnight correctly */}
-                    <td className="py-3 px-4 text-center">
-                      <span className="text-sm font-semibold text-gray-800 tabular-nums">
-                        {fmtHours(r.hours)}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-lg ${isWknd ? "ed-subtle" : "ed-badge-early"}`}>
+                      {dName}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${cfg.badge || "ed-subtle"}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot || "bg-gray-400"}`} />
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <p className="text-sm font-medium tabular-nums" style={{ color: "var(--text-secondary)" }}>{to12(r.in_time)}</p>
+                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{r.date}</p>
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <p className="text-sm font-medium tabular-nums" style={{ color: "var(--text-secondary)" }}>{to12(r.out_time)}</p>
+                    {outCrossed
+                      ? <p className="text-[10px] font-medium text-indigo-500">next day</p>
+                      : <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{r.date}</p>
+                    }
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    <span className="text-sm font-semibold tabular-nums" style={{ color: "var(--text-primary)" }}>{fmtHours(r.hours)}</span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {total > 1 && (
-        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
+        <div className="flex items-center justify-between mt-4 pt-3" style={{ borderTop: "1px solid var(--border-subtle)" }}>
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ed-btn-ghost disabled:opacity-40 disabled:cursor-not-allowed">
             <ChevronLeft size={14} /> Previous
           </button>
-          <span className="text-xs text-gray-500">
-            {(page - 1) * PAGE_SIZE + 1}–
-            {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+            {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
           </span>
-          <button
-            onClick={() => setPage((p) => Math.min(total, p + 1))}
-            disabled={page === total}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed transition"
-          >
+          <button onClick={() => setPage((p) => Math.min(total, p + 1))} disabled={page === total}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ed-btn-ghost disabled:opacity-40 disabled:cursor-not-allowed">
             Next <ChevronRight size={14} />
           </button>
         </div>
@@ -1225,172 +761,101 @@ function RecordsTable({
 
 /* ═══════════════════════════════════════════════════════════
    Root Page
-   ─────────────────────────────────────────────────────────
-   Backend handles all overnight pairing. Frontend:
-     1. Reads employee id from JWT (fixed)
-     2. Fetches shift for display context only
-     3. Fetches /me/today → single resolved record
-     4. Fetches /me?month → list, all dated on IN-punch date
-     5. Fetches /me/summary → aggregates
 ═══════════════════════════════════════════════════════════ */
 export default function MyAttendancePage() {
-  const employeeId = useMemo(() => getEmployeeIdFromToken(), []);
+  const employeeId        = useMemo(() => getEmployeeIdFromToken(), []);
   const employeeMachineId = useMemo(() => getEmployeeMachineIdFromToken(), []);
   const [month, setMonth] = useState(CURR_MONTH);
 
-  const [shift, setShift] = useState(null);
+  const [shift,     setShift]     = useState(null);
   const [shiftLoad, setShiftLoad] = useState(true);
 
-  const [todayRec, setTodayRec] = useState(null);
+  const [todayRec,  setTodayRec]  = useState(null);
   const [todayLoad, setTodayLoad] = useState(true);
-  const [todayErr, setTodayErr] = useState(null);
+  const [todayErr,  setTodayErr]  = useState(null);
 
-  const [summary, setSummary] = useState(null);
-  const [sumLoad, setSumLoad] = useState(true);
-  const [sumErr, setSumErr] = useState(null);
+  const [summary,   setSummary]   = useState(null);
+  const [sumLoad,   setSumLoad]   = useState(true);
+  const [sumErr,    setSumErr]    = useState(null);
 
-  const [records, setRecords] = useState([]);
-  const [recLoad, setRecLoad] = useState(true);
-  const [recErr, setRecErr] = useState(null);
+  const [records,   setRecords]   = useState([]);
+  const [recLoad,   setRecLoad]   = useState(true);
+  const [recErr,    setRecErr]    = useState(null);
 
-  /* ── Fetch shift (display only — banner & expected times) ── */
   const loadShift = useCallback(async () => {
-    if (!employeeId) {
-      setShiftLoad(false);
-      return;
-    }
+    if (!employeeId) { setShiftLoad(false); return; }
     setShiftLoad(true);
     try {
-      const url =
-        typeof API.shiftDetailsById === "function"
-          ? API.shiftDetailsById(employeeId)
-          : `${API.shiftDetailsById}/${employeeId}`;
+      const url = typeof API.shiftDetailsById === "function" ? API.shiftDetailsById(employeeId) : `${API.shiftDetailsById}/${employeeId}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(res.status);
       const data = await res.json();
       setShift(Array.isArray(data) ? (data[0] ?? null) : data);
-    } catch (e) {
-      console.warn("[Shift]", e.message);
-      setShift(null);
-    } finally {
-      setShiftLoad(false);
-    }
+    } catch (e) { console.warn("[Shift]", e.message); setShift(null); }
+    finally { setShiftLoad(false); }
   }, [employeeId]);
 
-  /* ── Fetch today (/me/today) ──
-     Backend resolves overnight post-midnight automatically.
-     Returns null when employee is outside shift window. */
   const loadToday = useCallback(async () => {
-    if (!employeeId) {
-      setTodayLoad(false);
-      return;
-    }
-    setTodayLoad(true);
-    setTodayErr(null);
+    if (!employeeId) { setTodayLoad(false); return; }
+    setTodayLoad(true); setTodayErr(null);
     try {
-      const url =
-        typeof API.MyAttendanceToday === "function"
-          ? API.MyAttendanceToday(employeeId)
-          : `${API.MyAttendanceToday}?employee_id=${employeeId}`;
+      const url = typeof API.MyAttendanceToday === "function" ? API.MyAttendanceToday(employeeId) : `${API.MyAttendanceToday}?employee_id=${employeeId}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Error ${res.status}`);
-      const data = await res.json();
-      setTodayRec(data ?? null);
-    } catch (e) {
-      setTodayErr(e.message);
-    } finally {
-      setTodayLoad(false);
-    }
+      setTodayRec((await res.json()) ?? null);
+    } catch (e) { setTodayErr(e.message); }
+    finally { setTodayLoad(false); }
   }, [employeeId]);
 
-  /* ── Fetch summary ── */
   const loadSummary = useCallback(async () => {
-    if (!employeeId) {
-      setSumLoad(false);
-      return;
-    }
-    setSumLoad(true);
-    setSumErr(null);
+    if (!employeeId) { setSumLoad(false); return; }
+    setSumLoad(true); setSumErr(null);
     try {
-      const url =
-        typeof API.MyAttendanceSummary === "function"
-          ? API.MyAttendanceSummary(employeeId, month)
-          : `${API.MyAttendanceSummary}?employee_id=${employeeId}&month=${month}`;
+      const url = typeof API.MyAttendanceSummary === "function" ? API.MyAttendanceSummary(employeeId, month) : `${API.MyAttendanceSummary}?employee_id=${employeeId}&month=${month}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Error ${res.status}`);
       setSummary(await res.json());
-    } catch (e) {
-      setSumErr(e.message);
-    } finally {
-      setSumLoad(false);
-    }
+    } catch (e) { setSumErr(e.message); }
+    finally { setSumLoad(false); }
   }, [employeeId, month]);
 
-  /* ── Fetch records (/me?month) ──
-     Backend returns records dated on IN-punch date.
-     No client-side merging needed. */
   const loadRecords = useCallback(async () => {
-    if (!employeeId) {
-      setRecLoad(false);
-      return;
-    }
-    setRecLoad(true);
-    setRecErr(null);
+    if (!employeeId) { setRecLoad(false); return; }
+    setRecLoad(true); setRecErr(null);
     try {
-      const url =
-        typeof API.MyAttendanceByMonth === "function"
-          ? API.MyAttendanceByMonth(employeeId, month)
-          : `${API.MyAttendance}?employee_id=${employeeId}&month=${month}`;
+      const url = typeof API.MyAttendanceByMonth === "function" ? API.MyAttendanceByMonth(employeeId, month) : `${API.MyAttendance}?employee_id=${employeeId}&month=${month}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`Error ${res.status}`);
       const data = await res.json();
       setRecords(Array.isArray(data) ? data : (data.records ?? []));
-    } catch (e) {
-      setRecErr(e.message);
-    } finally {
-      setRecLoad(false);
-    }
+    } catch (e) { setRecErr(e.message); }
+    finally { setRecLoad(false); }
   }, [employeeId, month]);
 
-  useEffect(() => {
-    loadShift();
-    loadToday();
-  }, [loadShift, loadToday]);
-  useEffect(() => {
-    loadSummary();
-    loadRecords();
-  }, [loadSummary, loadRecords]);
+  useEffect(() => { loadShift(); loadToday(); }, [loadShift, loadToday]);
+  useEffect(() => { loadSummary(); loadRecords(); }, [loadSummary, loadRecords]);
 
-  const refreshAll = () => {
-    loadShift();
-    loadToday();
-    loadSummary();
-    loadRecords();
-  };
+  const refreshAll = () => { loadShift(); loadToday(); loadSummary(); loadRecords(); };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-10">
+    <div className="min-h-screen ed-page px-6 py-10">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900">
-            My Attendance
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Your personal attendance record & monthly overview
-          </p>
+          <h1 className="text-3xl font-semibold" style={{ color: "var(--text-primary)" }}>My Attendance</h1>
+          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>Your personal attendance record & monthly overview</p>
         </div>
         <div className="flex items-center gap-3 self-start">
           {employeeMachineId && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-500 shadow-sm">
-              <User size={12} className="text-gray-400" /> Employee #
-              {employeeMachineId}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 ed-card rounded-xl text-xs font-medium"
+              style={{ color: "var(--text-secondary)" }}>
+              <User size={12} style={{ color: "var(--text-tertiary)" }} /> Employee #{employeeMachineId}
             </div>
           )}
           <button
             onClick={refreshAll}
             disabled={!employeeId}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-600 text-sm font-medium rounded-xl shadow-sm transition disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl shadow-sm transition ed-btn-ghost disabled:opacity-40"
           >
             <RefreshCw size={14} /> Refresh
           </button>
@@ -1402,43 +867,25 @@ export default function MyAttendancePage() {
       <ShiftBanner shift={shift} loading={shiftLoad} />
 
       <div className="mb-5">
-        <TodayCard
-          rec={todayRec}
-          shift={shift}
-          loading={todayLoad}
-          error={todayErr}
-          onRetry={loadToday}
-        />
+        <TodayCard rec={todayRec} shift={shift} loading={todayLoad} error={todayErr} onRetry={loadToday} />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {/* LEFT SIDE (2/3 width) */}
         <div className="lg:col-span-2 md:grid-cols-2 gap-5">
-          <SummarySection
-            summary={summary}
-            loading={sumLoad}
-            error={sumErr}
-            onRetry={loadSummary}
-            records={records}
-            shift={shift}
-          />
+          <SummarySection summary={summary} loading={sumLoad} error={sumErr} onRetry={loadSummary} records={records} shift={shift} />
         </div>
         <div>
           <CalHeatmap records={records} month={month} />
         </div>
       </div>
+
       <div className="my-2">
         <RateCard summary={summary} loading={sumLoad} />
       </div>
 
       <RecordsTable
-        records={records}
-        loading={recLoad}
-        error={recErr}
-        onRetry={loadRecords}
-        month={month}
-        onMonthChange={setMonth}
-        shift={shift}
+        records={records} loading={recLoad} error={recErr} onRetry={loadRecords}
+        month={month} onMonthChange={setMonth} shift={shift}
       />
     </div>
   );

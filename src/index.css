@@ -52,3 +52,673 @@
     0 0 0 3px rgba(153, 4, 0, 0.35),
     0 4px 10px rgba(153, 4, 0, 0.25);
 }
+
+/* 🌙 Dark Mode Styles */
+@media (prefers-color-scheme: dark) {
+  html.dark {
+    color-scheme: dark;
+  }
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Dark mode background and text */
+html.dark body {
+  @apply bg-gray-950 text-gray-100;
+}
+
+html.dark .page-bg {
+  background-image: linear-gradient(to right, rgba(30, 41, 59, 0.95), rgba(51, 65, 85, 0.8));
+}
+
+/* Dark mode card/container styles */
+html.dark .card,
+html.dark [class*="card"],
+html.dark [class*="bg-white"] {
+  @apply bg-gray-900 border-gray-800;
+}
+
+/* Dark mode input/form styles */
+html.dark input,
+html.dark textarea,
+html.dark select {
+  @apply bg-gray-800 border-gray-700 text-gray-100;
+}
+
+html.dark input::placeholder {
+  @apply text-gray-400;
+}
+
+/* Dark mode table styles */
+html.dark table {
+  @apply border-gray-700;
+}
+
+html.dark thead {
+  @apply bg-gray-800;
+}
+
+html.dark tbody tr {
+  @apply border-gray-700;
+}
+
+html.dark tbody tr:hover {
+  @apply bg-gray-800;
+}
+
+/* Dark mode button variants */
+html.dark button:not(.NavButtonColors) {
+  @apply bg-gray-800 text-gray-100 border-gray-700;
+}
+
+html.dark button:not(.NavButtonColors):hover {
+  @apply bg-gray-700;
+}
+
+/* Dark mode scrollbar */
+html.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  @apply bg-gray-900;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  @apply bg-gray-700 rounded;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
+}
+
+/* this is the global CSS for night and day mode */
+
+/* ═══════════════════════════════════════════════════════════
+   globals.css — Dark / Light Mode Design System
+   Compatible with next-themes (data-theme or class strategy)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Google Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
+
+/* ─────────────────────────────────────────
+   1. Light Mode Tokens (default)
+───────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --bg-page:          #f5f5f7;
+  --bg-card:          #ffffff;
+  --bg-card-hover:    #fafafa;
+  --bg-subtle:        #f3f4f6;
+  --bg-input:         #f9fafb;
+
+  /* Borders */
+  --border-base:      #e5e7eb;
+  --border-subtle:    #f0f0f0;
+  --border-focus:     #9ca3af;
+
+  /* Text */
+  --text-primary:     #111827;
+  --text-secondary:   #6b7280;
+  --text-tertiary:    #9ca3af;
+  --text-disabled:    #d1d5db;
+
+  /* Shadows */
+  --shadow-sm:        0 1px 3px 0 rgb(0 0 0 / .06), 0 1px 2px -1px rgb(0 0 0 / .06);
+  --shadow-md:        0 4px 12px 0 rgb(0 0 0 / .08), 0 2px 4px -2px rgb(0 0 0 / .06);
+  --shadow-card:      0 1px 3px rgb(0 0 0 / .07);
+
+  /* Brand / Accent */
+  --accent-blue:      #3b82f6;
+  --accent-blue-bg:   #eff6ff;
+  --accent-blue-text: #1d4ed8;
+
+  /* Status — Present */
+  --present-bg:       #ecfdf5;
+  --present-border:   #a7f3d0;
+  --present-text:     #065f46;
+  --present-dot:      #10b981;
+  --present-cal:      #34d399;
+
+  /* Status — Late */
+  --late-bg:          #fefce8;
+  --late-border:      #fde68a;
+  --late-text:        #92400e;
+  --late-dot:         #fbbf24;
+  --late-cal:         #fbbf24;
+
+  /* Status — Early */
+  --early-bg:         #eff6ff;
+  --early-border:     #bfdbfe;
+  --early-text:       #1e40af;
+  --early-dot:        #60a5fa;
+  --early-cal:        #60a5fa;
+
+  /* Status — Absent */
+  --absent-bg:        #fef2f2;
+  --absent-border:    #fecaca;
+  --absent-text:      #991b1b;
+  --absent-dot:       #ef4444;
+  --absent-cal:       #f87171;
+
+  /* Status — Leave */
+  --leave-bg:         #f9fafb;
+  --leave-border:     #e5e7eb;
+  --leave-text:       #4b5563;
+  --leave-dot:        #9ca3af;
+  --leave-cal:        #9ca3af;
+
+  /* Shift periods */
+  --shift-day-bg:       #fffbeb;
+  --shift-day-border:   #fde68a;
+  --shift-day-text:     #d97706;
+
+  --shift-afternoon-bg:     #fff7ed;
+  --shift-afternoon-border: #fed7aa;
+  --shift-afternoon-text:   #ea580c;
+
+  --shift-night-bg:     #eef2ff;
+  --shift-night-border: #c7d2fe;
+  --shift-night-text:   #4338ca;
+
+  /* Alert / Error */
+  --error-bg:         #fef2f2;
+  --error-border:     #fecaca;
+  --error-text:       #b91c1c;
+  --error-subtext:    #ef4444;
+
+  /* Warning / Auth */
+  --warn-bg:          #fffbeb;
+  --warn-border:      #fde68a;
+  --warn-text:        #92400e;
+  --warn-subtext:     #b45309;
+
+  /* Countdown */
+  --countdown-bg:     linear-gradient(to right, #eff6ff, #eef2ff);
+  --countdown-border: #bfdbfe;
+  --countdown-text:   #1d4ed8;
+
+  /* Table */
+  --table-head-bg:    #f9fafb;
+  --table-row-alt:    rgba(249, 250, 251, 0.5);
+  --table-row-hover:  rgba(59, 130, 246, 0.04);
+  --table-border:     #f3f4f6;
+
+  /* Scrollbar */
+  --scrollbar-track:  #f1f1f1;
+  --scrollbar-thumb:  #d1d5db;
+  --scrollbar-hover:  #9ca3af;
+}
+
+/* ─────────────────────────────────────────
+   2. Dark Mode Tokens
+   Works with:
+     • next-themes defaultTheme="system" (adds .dark on <html>)
+     • data-theme="dark" on <html>
+───────────────────────────────────────── */
+.dark,
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg-page:          #0f1117;
+  --bg-card:          #1a1d27;
+  --bg-card-hover:    #1f2230;
+  --bg-subtle:        #252836;
+  --bg-input:         #1f2230;
+
+  /* Borders */
+  --border-base:      #2d3148;
+  --border-subtle:    #252836;
+  --border-focus:     #4b5563;
+
+  /* Text */
+  --text-primary:     #f0f2f8;
+  --text-secondary:   #9ca3af;
+  --text-tertiary:    #6b7280;
+  --text-disabled:    #374151;
+
+  /* Shadows */
+  --shadow-sm:        0 1px 3px 0 rgb(0 0 0 / .4), 0 1px 2px -1px rgb(0 0 0 / .3);
+  --shadow-md:        0 4px 16px 0 rgb(0 0 0 / .5), 0 2px 6px -2px rgb(0 0 0 / .3);
+  --shadow-card:      0 1px 4px rgb(0 0 0 / .4);
+
+  /* Brand */
+  --accent-blue:      #60a5fa;
+  --accent-blue-bg:   #1e2a45;
+  --accent-blue-text: #93c5fd;
+
+  /* Status — Present */
+  --present-bg:       #0d2318;
+  --present-border:   #134e2b;
+  --present-text:     #6ee7b7;
+  --present-dot:      #34d399;
+  --present-cal:      #059669;
+
+  /* Status — Late */
+  --late-bg:          #2a1f00;
+  --late-border:      #4d3a00;
+  --late-text:        #fcd34d;
+  --late-dot:         #f59e0b;
+  --late-cal:         #d97706;
+
+  /* Status — Early */
+  --early-bg:         #0f1e3d;
+  --early-border:     #1e3a6e;
+  --early-text:       #93c5fd;
+  --early-dot:        #3b82f6;
+  --early-cal:        #2563eb;
+
+  /* Status — Absent */
+  --absent-bg:        #2a0f0f;
+  --absent-border:    #4c1515;
+  --absent-text:      #fca5a5;
+  --absent-dot:       #ef4444;
+  --absent-cal:       #dc2626;
+
+  /* Status — Leave */
+  --leave-bg:         #1e2130;
+  --leave-border:     #2d3148;
+  --leave-text:       #9ca3af;
+  --leave-dot:        #6b7280;
+  --leave-cal:        #4b5563;
+
+  /* Shift periods */
+  --shift-day-bg:       #271c00;
+  --shift-day-border:   #4d3800;
+  --shift-day-text:     #fcd34d;
+
+  --shift-afternoon-bg:     #2a1500;
+  --shift-afternoon-border: #4d2900;
+  --shift-afternoon-text:   #fb923c;
+
+  --shift-night-bg:     #14133a;
+  --shift-night-border: #2a2860;
+  --shift-night-text:   #a5b4fc;
+
+  /* Alert / Error */
+  --error-bg:         #2a0f0f;
+  --error-border:     #4c1515;
+  --error-text:       #fca5a5;
+  --error-subtext:    #ef4444;
+
+  /* Warning / Auth */
+  --warn-bg:          #2a1f00;
+  --warn-border:      #4d3800;
+  --warn-text:        #fcd34d;
+  --warn-subtext:     #f59e0b;
+
+  /* Countdown */
+  --countdown-bg:     linear-gradient(to right, #1e2a45, #1a1f3d);
+  --countdown-border: #2d3f6e;
+  --countdown-text:   #93c5fd;
+
+  /* Table */
+  --table-head-bg:    #1f2230;
+  --table-row-alt:    rgba(31, 34, 48, 0.6);
+  --table-row-hover:  rgba(59, 130, 246, 0.07);
+  --table-border:     #252836;
+
+  /* Scrollbar */
+  --scrollbar-track:  #1a1d27;
+  --scrollbar-thumb:  #374151;
+  --scrollbar-hover:  #4b5563;
+}
+
+/* ─────────────────────────────────────────
+   3. Base Reset & Typography
+───────────────────────────────────────── */
+/* *, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+} */
+
+html {
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* text-rendering: optimizeLegibility; */
+  scroll-behavior: smooth;
+}
+
+body {
+  /* font-family: 'Geist',  BlinkMacSystemFont, 'Segoe UI', sans-serif; */
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color 0.25s ease, color 0.2s ease;
+  /* line-height: 1.5; */
+}
+
+/* ─────────────────────────────────────────
+   4. Scrollbar
+───────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* ─────────────────────────────────────────
+   5. Utility Classes (use in JSX)
+───────────────────────────────────────── */
+
+/* Page container */
+.ed-page {
+  background-color: var(--bg-page);
+  transition: background-color 0.25s ease;
+}
+
+/* Card */
+.ed-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-base);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+.ed-card:hover { background-color: var(--bg-card-hover); }
+
+/* Text utilities */
+.ed-text-primary   { color: var(--text-primary); }
+.ed-text-secondary { color: var(--text-secondary); }
+.ed-text-tertiary  { color: var(--text-tertiary); }
+
+/* Border */
+.ed-border    { border-color: var(--border-base); }
+.ed-border-sm { border-color: var(--border-subtle); }
+
+/* Input / Select */
+.ed-input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-base);
+  color: var(--text-primary);
+  border-radius: 0.5rem;
+  transition: border-color 0.15s ease, background-color 0.2s ease;
+}
+.ed-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+/* Status badges */
+.ed-badge-present    { background: var(--present-bg);  border: 1px solid var(--present-border);  color: var(--present-text); }
+.ed-badge-late       { background: var(--late-bg);     border: 1px solid var(--late-border);     color: var(--late-text); }
+.ed-badge-early      { background: var(--early-bg);    border: 1px solid var(--early-border);    color: var(--early-text); }
+.ed-badge-absent     { background: var(--absent-bg);   border: 1px solid var(--absent-border);   color: var(--absent-text); }
+.ed-badge-leave      { background: var(--leave-bg);    border: 1px solid var(--leave-border);    color: var(--leave-text); }
+
+/* Status dots */
+.ed-dot-present  { background: var(--present-dot); }
+.ed-dot-late     { background: var(--late-dot); }
+.ed-dot-early    { background: var(--early-dot); }
+.ed-dot-absent   { background: var(--absent-dot); }
+.ed-dot-leave    { background: var(--leave-dot); }
+
+/* Calendar heatmap cells */
+.ed-cal-present  { background: var(--present-cal);  color: #fff; }
+.ed-cal-late     { background: var(--late-cal);     color: #fff; }
+.ed-cal-early    { background: var(--early-cal);    color: #fff; }
+.ed-cal-absent   { background: var(--absent-cal);   color: #fff; }
+.ed-cal-leave    { background: var(--leave-cal);    color: #fff; }
+
+/* Shift period banners */
+.ed-shift-day {
+  background: var(--shift-day-bg);
+  border: 1px solid var(--shift-day-border);
+  color: var(--shift-day-text);
+}
+.ed-shift-afternoon {
+  background: var(--shift-afternoon-bg);
+  border: 1px solid var(--shift-afternoon-border);
+  color: var(--shift-afternoon-text);
+}
+.ed-shift-night {
+  background: var(--shift-night-bg);
+  border: 1px solid var(--shift-night-border);
+  color: var(--shift-night-text);
+}
+
+/* Error / Warning banners */
+.ed-error {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+}
+.ed-warn {
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
+}
+
+/* Countdown strip */
+.ed-countdown {
+  background: var(--countdown-bg);
+  border: 1px solid var(--countdown-border);
+  color: var(--countdown-text);
+}
+
+/* Table */
+.ed-table-head { background: var(--table-head-bg); }
+.ed-table-alt  { background: var(--table-row-alt); }
+.ed-table-border { border-color: var(--table-border); }
+
+/* Subtle container (grey box) */
+.ed-subtle {
+  background-color: var(--bg-subtle);
+  border-radius: 0.75rem;
+}
+
+/* Progress bar track */
+.ed-track {
+  background-color: var(--border-base);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+/* Button ghost */
+.ed-btn-ghost {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-base);
+  color: var(--text-secondary);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.ed-btn-ghost:hover {
+  border-color: var(--border-focus);
+  background-color: var(--bg-subtle);
+}
+.ed-btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────
+   6. Component-level dark overrides
+   (for Tailwind classes that don't read CSS vars)
+───────────────────────────────────────── */
+
+/* Card shadow in dark */
+.dark .ed-card,
+[data-theme="dark"] .ed-card {
+  box-shadow: var(--shadow-card);
+}
+
+/* Pulse animation dimmer in dark */
+.dark .animate-pulse,
+[data-theme="dark"] .animate-pulse {
+  opacity: 0.6;
+}
+
+/* ─────────────────────────────────────────
+   7. Tailwind dark: overrides for Attendance page
+   (Add these alongside your Tailwind classes)
+───────────────────────────────────────── */
+
+/* Page background */
+.dark .ed-page,
+[data-theme="dark"] .ed-page {
+  background-color: var(--bg-page);
+}
+
+/* White cards → dark card surface */
+.dark .bg-white,
+[data-theme="dark"] .bg-white {
+  background-color: var(--bg-card) !important;
+}
+
+/* Gray-50 → dark subtle */
+.dark .bg-gray-50,
+[data-theme="dark"] .bg-gray-50 {
+  background-color: var(--bg-subtle) !important;
+}
+
+/* Gray-100 → slightly lighter dark */
+.dark .bg-gray-100,
+[data-theme="dark"] .bg-gray-100 {
+  background-color: #252836 !important;
+}
+
+/* Text overrides */
+.dark .text-gray-900,
+[data-theme="dark"] .text-gray-900 { color: var(--text-primary) !important; }
+
+.dark .text-gray-800,
+[data-theme="dark"] .text-gray-800 { color: #d1d5db !important; }
+
+.dark .text-gray-700,
+[data-theme="dark"] .text-gray-700 { color: #9ca3af !important; }
+
+.dark .text-gray-600,
+[data-theme="dark"] .text-gray-600 { color: #9ca3af !important; }
+
+.dark .text-gray-500,
+[data-theme="dark"] .text-gray-500 { color: var(--text-secondary) !important; }
+
+.dark .text-gray-400,
+[data-theme="dark"] .text-gray-400 { color: var(--text-tertiary) !important; }
+
+.dark .text-gray-300,
+[data-theme="dark"] .text-gray-300 { color: #4b5563 !important; }
+
+/* Border overrides */
+.dark .border-gray-100,
+[data-theme="dark"] .border-gray-100 { border-color: var(--border-subtle) !important; }
+
+.dark .border-gray-200,
+[data-theme="dark"] .border-gray-200 { border-color: var(--border-base) !important; }
+
+/* Input / Select dark */
+.dark select,
+.dark input,
+[data-theme="dark"] select,
+[data-theme="dark"] input {
+  background-color: var(--bg-input) !important;
+  border-color: var(--border-base) !important;
+  color: var(--text-primary) !important;
+  color-scheme: dark;
+}
+
+/* Shadow */
+.dark .shadow-sm,
+[data-theme="dark"] .shadow-sm {
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* ── Status badge overrides (dark) ── */
+
+/* Present */
+.dark .bg-emerald-100,  [data-theme="dark"] .bg-emerald-100  { background-color: var(--present-bg)     !important; }
+.dark .text-emerald-800,[data-theme="dark"] .text-emerald-800 { color: var(--present-text)              !important; }
+.dark .bg-emerald-500,  [data-theme="dark"] .bg-emerald-500  { background-color: var(--present-dot)    !important; }
+.dark .bg-emerald-50,   [data-theme="dark"] .bg-emerald-50   { background-color: var(--present-bg)     !important; }
+.dark .border-emerald-200,[data-theme="dark"] .border-emerald-200 { border-color: var(--present-border) !important; }
+.dark .text-emerald-700,[data-theme="dark"] .text-emerald-700 { color: var(--present-text)              !important; }
+.dark .text-emerald-600,[data-theme="dark"] .text-emerald-600 { color: var(--present-dot)               !important; }
+.dark .border-emerald-100,[data-theme="dark"] .border-emerald-100 { border-color: var(--present-border) !important; }
+
+/* Late / Amber / Yellow */
+.dark .bg-yellow-100,   [data-theme="dark"] .bg-yellow-100   { background-color: var(--late-bg)        !important; }
+.dark .text-yellow-800, [data-theme="dark"] .text-yellow-800  { color: var(--late-text)                 !important; }
+.dark .bg-yellow-400,   [data-theme="dark"] .bg-yellow-400   { background-color: var(--late-dot)       !important; }
+.dark .bg-amber-50,     [data-theme="dark"] .bg-amber-50      { background-color: var(--late-bg)        !important; }
+.dark .border-amber-200,[data-theme="dark"] .border-amber-200 { border-color: var(--late-border)       !important; }
+.dark .border-amber-100,[data-theme="dark"] .border-amber-100 { border-color: var(--late-border)       !important; }
+.dark .text-amber-700,  [data-theme="dark"] .text-amber-700   { color: var(--late-text)                 !important; }
+.dark .text-amber-500,  [data-theme="dark"] .text-amber-500   { color: var(--shift-day-text)            !important; }
+.dark .text-amber-800,  [data-theme="dark"] .text-amber-800   { color: var(--warn-text)                 !important; }
+
+/* Early / Blue */
+.dark .bg-blue-100,     [data-theme="dark"] .bg-blue-100      { background-color: var(--early-bg)      !important; }
+.dark .text-blue-800,   [data-theme="dark"] .text-blue-800    { color: var(--early-text)               !important; }
+.dark .bg-blue-400,     [data-theme="dark"] .bg-blue-400      { background-color: var(--early-dot)     !important; }
+.dark .bg-blue-50,      [data-theme="dark"] .bg-blue-50       { background-color: var(--early-bg)      !important; }
+.dark .border-blue-100, [data-theme="dark"] .border-blue-100  { border-color: var(--early-border)      !important; }
+.dark .text-blue-600,   [data-theme="dark"] .text-blue-600    { color: var(--accent-blue)              !important; }
+.dark .text-blue-700,   [data-theme="dark"] .text-blue-700    { color: var(--early-text)               !important; }
+
+/* Absent / Red */
+.dark .bg-red-100,      [data-theme="dark"] .bg-red-100       { background-color: var(--absent-bg)     !important; }
+.dark .text-red-700,    [data-theme="dark"] .text-red-700     { color: var(--absent-text)              !important; }
+.dark .bg-red-500,      [data-theme="dark"] .bg-red-500       { background-color: var(--absent-dot)    !important; }
+.dark .bg-red-50,       [data-theme="dark"] .bg-red-50        { background-color: var(--absent-bg)     !important; }
+.dark .border-red-100,  [data-theme="dark"] .border-red-100   { border-color: var(--absent-border)     !important; }
+.dark .border-red-200,  [data-theme="dark"] .border-red-200   { border-color: var(--absent-border)     !important; }
+.dark .text-red-500,    [data-theme="dark"] .text-red-500     { color: var(--absent-dot)               !important; }
+.dark .text-red-600,    [data-theme="dark"] .text-red-600     { color: var(--absent-text)              !important; }
+
+/* Leave / Slate */
+.dark .bg-slate-100,    [data-theme="dark"] .bg-slate-100     { background-color: var(--leave-bg)      !important; }
+.dark .text-slate-600,  [data-theme="dark"] .text-slate-600   { color: var(--leave-text)               !important; }
+.dark .bg-slate-400,    [data-theme="dark"] .bg-slate-400     { background-color: var(--leave-dot)     !important; }
+
+/* Indigo (overnight / night shift) */
+.dark .bg-indigo-50,    [data-theme="dark"] .bg-indigo-50     { background-color: var(--shift-night-bg)     !important; }
+.dark .border-indigo-100,[data-theme="dark"] .border-indigo-100 { border-color: var(--shift-night-border)  !important; }
+.dark .text-indigo-700, [data-theme="dark"] .text-indigo-700  { color: var(--shift-night-text)              !important; }
+.dark .text-indigo-500, [data-theme="dark"] .text-indigo-500  { color: var(--shift-night-text)              !important; }
+.dark .text-indigo-600, [data-theme="dark"] .text-indigo-600  { color: var(--shift-night-text)              !important; }
+.dark .bg-indigo-100,   [data-theme="dark"] .bg-indigo-100    { background-color: var(--shift-night-bg)     !important; }
+
+/* Orange (afternoon shift) */
+.dark .text-orange-500, [data-theme="dark"] .text-orange-500  { color: var(--shift-afternoon-text)     !important; }
+.dark .bg-orange-50,    [data-theme="dark"] .bg-orange-50     { background-color: var(--shift-afternoon-bg) !important; }
+.dark .border-orange-200,[data-theme="dark"] .border-orange-200 { border-color: var(--shift-afternoon-border) !important; }
+
+/* ── Hover overrides ── */
+.dark .hover\:bg-red-50:hover,
+[data-theme="dark"] .hover\:bg-red-50:hover {
+  background-color: var(--absent-bg) !important;
+}
+.dark .hover\:bg-blue-50\/30:hover,
+[data-theme="dark"] .hover\:bg-blue-50\/30:hover {
+  background-color: var(--table-row-hover) !important;
+}
+.dark .hover\:bg-gray-200:hover,
+[data-theme="dark"] .hover\:bg-gray-200:hover {
+  background-color: #2d3148 !important;
+}
+.dark .hover\:border-gray-300:hover,
+[data-theme="dark"] .hover\:border-gray-300:hover {
+  border-color: var(--border-focus) !important;
+}
+
+/* ── Ring (today highlight) ── */
+.dark .ring-blue-500,
+[data-theme="dark"] .ring-blue-500 {
+  --tw-ring-color: #3b82f6;
+}
+
+/* ─────────────────────────────────────────
+   8. Transition helper — smooth theme switch
+───────────────────────────────────────── */
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color 0.25s ease,
+    border-color     0.2s ease,
+    color            0.2s ease,
+    box-shadow       0.2s ease !important;
+}

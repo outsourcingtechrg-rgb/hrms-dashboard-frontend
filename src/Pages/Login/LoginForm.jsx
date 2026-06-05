@@ -110,7 +110,7 @@ export default function LoginForm({ onForgotPassword, onLogin }) {
           <div className="space-y-2">
             <label
               htmlFor="email"
-              className="block text-black text-base font-medium"
+              className="block  text-base font-medium"
             >
               Email
             </label>
@@ -129,7 +129,7 @@ export default function LoginForm({ onForgotPassword, onLogin }) {
           <div className="space-y-2">
             <label
               htmlFor="password"
-              className="block text-black text-base font-medium"
+              className="block  text-base font-medium"
             >
               Password
             </label>

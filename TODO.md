@@ -1,0 +1,7 @@
+- [ ] Inspect current theme implementation in EmployeeDashboard.jsx (done)
+- [ ] Add next-themes support + theme tokens (CSS vars) to MySection/MyAttendance.jsx (planned)
+- [ ] Update MyAttendance.jsx Tailwind light-only classes to use CSS variables / .dark variants consistently
+- [ ] Inject shared CSS tokens in the page (same pattern as EmployeeDashboard)
+- [ ] Ensure heatmap + table/inputs render correctly in dark mode
+- [ ] Build (vite build) to confirm compilation
+- [ ] Attempt completion / summarize changes
