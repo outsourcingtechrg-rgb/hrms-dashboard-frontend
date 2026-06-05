@@ -610,6 +610,54 @@ body {
 .dark .border-gray-200,
 [data-theme="dark"] .border-gray-200 { border-color: var(--border-base) !important; }
 
+/* Ticket page dark mode overrides */
+.dark .tk-root [class*="bg-zinc-50"],
+[data-theme="dark"] .tk-root [class*="bg-zinc-50"] {
+  background-color: #111827 !important;
+}
+
+.dark .tk-root [class*="bg-zinc-100"],
+[data-theme="dark"] .tk-root [class*="bg-zinc-100"] {
+  background-color: #1f2230 !important;
+}
+
+.dark .tk-root [class*="border-zinc-100"],
+[data-theme="dark"] .tk-root [class*="border-zinc-100"],
+.dark .tk-root [class*="border-zinc-200"],
+[data-theme="dark"] .tk-root [class*="border-zinc-200"] {
+  border-color: #323748 !important;
+}
+
+.dark .tk-root [class*="text-zinc-900"],
+[data-theme="dark"] .tk-root [class*="text-zinc-900"] {
+  color: #f8fafc !important;
+}
+
+.dark .tk-root [class*="text-zinc-800"],
+[data-theme="dark"] .tk-root [class*="text-zinc-800"] {
+  color: #e2e8f0 !important;
+}
+
+.dark .tk-root [class*="text-zinc-700"],
+[data-theme="dark"] .tk-root [class*="text-zinc-700"] {
+  color: #cbd5e1 !important;
+}
+
+.dark .tk-root [class*="text-zinc-600"],
+[data-theme="dark"] .tk-root [class*="text-zinc-600"] {
+  color: #94a3b8 !important;
+}
+
+.dark .tk-root [class*="text-zinc-500"],
+[data-theme="dark"] .tk-root [class*="text-zinc-500"] {
+  color: #94a3b8 !important;
+}
+
+.dark .tk-root [class*="text-zinc-400"],
+[data-theme="dark"] .tk-root [class*="text-zinc-400"] {
+  color: #9ca3af !important;
+}
+
 /* Input / Select dark */
 .dark select,
 .dark input,

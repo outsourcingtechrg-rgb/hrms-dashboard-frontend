@@ -933,13 +933,16 @@ export default function MyTickets() {
 
   if (loading)
     return (
-      <div className="tk-root min-h-screen bg-zinc-50 flex items-center justify-center">
-        <Loader2 size={28} className="tk-spin text-zinc-400" />
+      <div className="tk-root min-h-screen bg-zinc-50 dark:bg-slate-950 flex items-center justify-center transition-colors duration-200">
+        <Loader2
+          size={28}
+          className="tk-spin text-zinc-400 dark:text-slate-400"
+        />
       </div>
     );
 
   return (
-    <div className="tk-root min-h-screen bg-zinc-50">
+    <div className="tk-root min-h-screen bg-zinc-50 dark:bg-slate-950 transition-colors duration-200">
       <Toast toasts={toasts} />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
