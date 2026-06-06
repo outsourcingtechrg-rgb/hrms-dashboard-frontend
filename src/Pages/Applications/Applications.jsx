@@ -2041,7 +2041,7 @@ export default function ApplicationsPage() {
   ].filter(t => t.show !== false);
 
   return (
-    <div className="min-h-screen bg-[#f7f8fc] ap2-font p-5 sm:p-6">
+    <div className="min-h-screen bg-gray-50 text-gray-900 ap2-font p-5 sm:p-6">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 ap2-up">

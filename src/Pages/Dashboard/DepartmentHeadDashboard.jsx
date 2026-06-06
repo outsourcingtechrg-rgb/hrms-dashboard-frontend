@@ -1762,12 +1762,12 @@ export default function HODDashboard() {
   const deptName = dept?.department || (deptLoad ? "…" : "Your Department");
 
   return (
-    <div className="hd-page min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/20 px-5 sm:px-8 py-8">
+    <div className="hd-page min-h-screen bg-gray-50 px-5 sm:px-8 py-8">
       {/* ── Header ── */}
       <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7 hd-in">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg shadow-blue-200/60">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg">
               <UserCheck size={18} className="text-white" />
             </div>
             <div>
@@ -1802,7 +1802,7 @@ export default function HODDashboard() {
             onClick={() => setView(key)}
             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition border ${
               view === key
-                ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200/50"
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-md"
                 : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
             }`}
           >

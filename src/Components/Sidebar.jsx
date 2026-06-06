@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/rig.png";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Sidebar({
   isOpen,
@@ -440,12 +441,14 @@ export default function Sidebar({
 
         {/* Footer status */}
         <div className="hrms-sidebar-footer">
-          <div className="hrms-footer-badge">
-            <div className="hrms-footer-dot" />
+
             {!collapsed && (
-              <span className="hrms-footer-text">System online</span>
+              <div className="center flex gap-2 justify-center">
+                <ThemeToggle />
+              </div>
+              // <span className="hrms-footer-text">System online</span>
             )}
-          </div>
+
         </div>
       </aside>
     </>

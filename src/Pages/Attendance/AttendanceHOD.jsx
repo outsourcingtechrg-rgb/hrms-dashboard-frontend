@@ -813,11 +813,11 @@ function RecordsTable({
   return (
     <div className="ea-card">
       {/* Toolbar */}
-      <div className="px-5 py-4 border-b border-gray-50 flex flex-wrap items-center gap-3">
-        <p className="text-sm font-semibold text-gray-700 flex-1 min-w-20">
+      <div className="px-5 py-4 border-b  flex flex-wrap items-center gap-3">
+        <p className="text-sm font-semibold  flex-1 min-w-20">
           Records
           {!loading && (
-            <span className="ml-1.5 text-xs font-normal text-gray-400 ea-mono">
+            <span className="ml-1.5 text-xs font-normal ea-mono">
               ({filtered.length})
             </span>
           )}
@@ -932,7 +932,7 @@ function RecordsTable({
       <div className="overflow-x-auto ea-scroll">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-50">
+            <tr className="border-b ">
               {[
                 ["Employee", "text-left pl-5"],
                 ["Department", "text-center"],
@@ -1306,10 +1306,6 @@ export default function EmployeesAttendancePage() {
   return (
     <div
       className="ea-page min-h-screen px-5 sm:px-8 py-10"
-      style={{
-        background:
-          "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f0f4ff 100%)",
-      }}
     >
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7 ea-fade">

@@ -672,7 +672,7 @@ export default function Navbar({ setIsOpen, onLogout }) {
 
         {/* Right */}
         <div className="hrms-navbar-right" ref={dropdownRef}>
-          <ThemeToggle />
+          {/* <ThemeToggle /> */}
           <button
             className="hrms-profile-btn"
             onClick={() => setOpen((prev) => !prev)}
